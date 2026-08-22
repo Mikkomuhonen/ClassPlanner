@@ -1,0 +1,20 @@
+{
+  "name": "classplanner",
+  "version": "1.0.0",
+  "description": "Class Planner - Week Schedule Management",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "npx serve public",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "class",
+    "planner",
+    "schedule",
+    "week"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {}
+}

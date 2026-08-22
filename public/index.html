@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClassPlanner – Viikkosuunnitelma</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+
+    /* ---- TOOLBAR ---- */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #1e3a5f;
+      color: white;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .toolbar-left h1 { font-size: 1.05em; font-weight: 700; letter-spacing: -0.3px; }
+    .toolbar-center { display: flex; align-items: center; gap: 10px; font-size: 0.9em; font-weight: 500; }
+    .toolbar-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    #toolbar button {
+      background: rgba(255,255,255,0.12);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.82em;
+      transition: background 0.15s;
+    }
+    #toolbar button:hover { background: rgba(255,255,255,0.22); }
+    body.edit-mode #editToggle { background: #f59e0b; color: #1a1a1a; border-color: #d97706; font-weight: 600; }
+    #folderName { font-size: 0.78em; opacity: 0.7; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ---- MAIN ---- */
+    main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+
+    /* ---- GRID TABLE ---- */
+    #grid {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    #grid th, #grid td { border: 1px solid #d1d5db; vertical-align: top; }
+    #grid thead th {
+      background: #2c5282;
+      color: white;
+      padding: 8px 10px;
+      font-size: 0.88em;
+      text-align: center;
+      font-weight: 600;
+    }
+    #grid thead th:first-child { width: 76px; }
+
+    .time-cell {
+      padding: 5px 7px;
+      font-size: 0.85em;
+      font-weight: 700;
+      color: #374151;
+      width: 76px;
+      text-align: center;
+      vertical-align: middle;
+      background: #fafafa;
+    }
+
+    .lesson-cell {
+      height: auto;
+      min-height: 40px;
+      padding: 5px 7px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .lesson-cell:hover { background: #eff6ff; }
+    .lesson-cell.has-content { background: #fefce8; }
+    .lesson-cell.has-content:hover { background: #fef9c3; }
+    .cell-time { font-size: 0.72em; color: #6b7280; margin-bottom: 2px; }
+    .cell-participants { font-size: 0.72em; color: #6b7280; margin-bottom: 2px; font-style: italic; }
+
+    .cell-text { font-size: 0.82em; line-height: 1.35; color: #374151; white-space: pre-wrap; }
+    .cell-break { font-size: 0.7em; color: #9ca3af; text-align: center; padding: 3px 0 2px; border-top: 1px dashed #e5e7eb; margin-top: 4px; }
+    .cell-lunch { font-size: 0.72em; color: #b45309; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .popup-lunch-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 15px;
+      border-top: 1px solid #e5e7eb; flex-shrink: 0; background: #fffbeb; flex-wrap: wrap;
+    }
+    .popup-lunch-row label { font-size: 0.82em; color: #92400e; }
+    .lunch-time-input { border: 1px solid #fcd34d; border-radius: 4px; padding: 3px 6px; font-size: 0.85em; outline: none; width: 100px; }
+    .lunch-time-input:focus { border-color: #d97706; }
+    .lunch-dur-select { border: 1px solid #fcd34d; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
+    #clearLunchBtn { background: none; border: none; color: #92400e; cursor: pointer; font-size: 0.78em; text-decoration: underline; padding: 0; }
+    .cell-time.time-overridden { color: #d97706; font-weight: 600; }
+
+    /* ---- BREAKS SECTION ---- */
+    #breaksSection {
+      display: none;
+      margin-top: 18px;
+      background: white;
+      border-radius: 6px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    body.edit-mode #breaksSection { display: block; }
+    #breaksSection h2 { font-size: 0.95em; font-weight: 600; margin-bottom: 12px; color: #374151; }
+    .breaks-day-row { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+    .breaks-day-label { font-weight: 600; font-size: 0.82em; color: #374151; min-width: 90px; flex-shrink: 0; }
+    .break-slot-label { font-size: 0.75em; color: #9ca3af; padding: 0 2px; }
+    .break-add-btn {
+      background: none; border: 1px dashed #9ca3af; color: #6b7280;
+      border-radius: 4px; cursor: pointer; padding: 0px 5px; font-size: 0.78em; line-height: 1.6;
+    }
+    .break-add-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .break-entry {
+      display: inline-flex; align-items: center; gap: 2px;
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px;
+      padding: 2px 4px; font-size: 0.78em;
+    }
+    .break-dur-dec, .break-dur-inc {
+      background: white; border: 1px solid #d1d5db; border-radius: 2px;
+      cursor: pointer; width: 18px; height: 18px; font-size: 0.85em;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .break-dur-dec:hover, .break-dur-inc:hover { background: #e5e7eb; }
+    .break-del-entry { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1em; padding: 0 1px; }
+    .break-del-entry:hover { color: #dc2626; }
+
+    /* ---- POPUP TIME ---- */
+    .popup-time-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 15px;
+      border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: white;
+    }
+    .popup-time-row.has-override { background: #fffbeb; }
+    .popup-time-row label { font-size: 0.82em; color: #6b7280; }
+    .popup-time-input { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 0.85em; outline: none; width: 90px; }
+    .popup-time-input:focus { border-color: #3b82f6; }
+    #popupResetTime { background: none; border: none; color: #6b7280; cursor: pointer; font-size: 0.78em; padding: 2px 6px; margin-left: auto; }
+    #popupResetTime:hover { color: #3b82f6; text-decoration: underline; }
+    .popup-copy-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 15px;
+      border-top: 1px solid #e5e7eb; flex-shrink: 0; background: #f9fafb;
+      flex-wrap: wrap;
+    }
+    .popup-copy-row label { font-size: 0.82em; color: #6b7280; }
+    .popup-copy-select { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
+    .popup-copy-select:focus { border-color: #3b82f6; }
+    #copySlotBtn { background: none; border: 1px solid #3b82f6; color: #3b82f6; border-radius: 4px; cursor: pointer; font-size: 0.78em; padding: 3px 8px; }
+    #copySlotBtn:hover { background: #eff6ff; }
+    #copySlotFeedback { font-size: 0.78em; color: #16a34a; }
+    .copy-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e5e7eb; flex-wrap: wrap; }
+    .copy-row label { font-size: 0.82em; color: #6b7280; }
+    .copy-day-select { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
+    .copy-day-btn { background: none; border: 1px solid #3b82f6; color: #3b82f6; border-radius: 4px; cursor: pointer; font-size: 0.78em; padding: 3px 8px; }
+    .copy-day-btn:hover { background: #eff6ff; }
+    #copyDayFeedback { font-size: 0.78em; color: #16a34a; }
+
+    /* ---- REGISTRY SECTION ---- */
+    #registrySection {
+      display: none;
+      margin-top: 18px;
+      background: white;
+      border-radius: 6px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    body.edit-mode #registrySection { display: block; }
+    #registrySection h2 { font-size: 0.95em; font-weight: 600; margin-bottom: 12px; color: #374151; }
+
+    .reg-group { border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+    .reg-group-header { display: flex; align-items: center; gap: 8px; background: #f9fafb; padding: 6px 10px; }
+    .group-name-input {
+      border: none; background: transparent; font-weight: 600; font-size: 0.9em;
+      flex: 1; outline: none; color: #1f2937;
+    }
+    .group-name-input:focus { border-bottom: 1px solid #3b82f6; }
+    .reg-group-members { padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .member-item {
+      display: flex; align-items: center; gap: 3px;
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 4px; padding: 2px 4px 2px 8px; font-size: 0.82em;
+    }
+    .member-name-input { border: none; background: transparent; width: 88px; outline: none; font-size: 0.9em; }
+    .del-btn { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1em; padding: 0 2px; line-height: 1; }
+    .del-btn:hover { color: #dc2626; }
+    .add-member-btn, #addGroupBtn {
+      background: none; border: 1px dashed #9ca3af; color: #6b7280;
+      border-radius: 4px; cursor: pointer; padding: 3px 8px; font-size: 0.78em;
+    }
+    .add-member-btn:hover, #addGroupBtn:hover { border-color: #3b82f6; color: #3b82f6; }
+    #addGroupBtn { display: inline-block; margin-top: 8px; }
+
+    /* ---- RHYTHMS SECTION ---- */
+    #rhythmsSection {
+      display: none;
+      margin-top: 18px;
+      background: white;
+      border-radius: 6px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    body.edit-mode #rhythmsSection { display: block; }
+    #rhythmsSection h2 { font-size: 0.95em; font-weight: 600; margin-bottom: 12px; color: #374151; }
+    .rhythm-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .rhythm-name-input {
+      border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 8px;
+      width: 60px; font-size: 0.9em; font-weight: 600; outline: none; color: #1f2937;
+    }
+    .rhythm-name-input:focus { border-color: #3b82f6; }
+    .rhythm-time-input { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 0.85em; outline: none; }
+    .rhythm-time-input:focus { border-color: #3b82f6; }
+    #addRhythmBtn {
+      background: none; border: 1px dashed #9ca3af; color: #6b7280;
+      border-radius: 4px; cursor: pointer; padding: 3px 8px; font-size: 0.78em; margin-top: 4px;
+    }
+    #addRhythmBtn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .day-th-select {
+      font-size: 0.78em; background: rgba(255,255,255,0.15); color: white;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; padding: 1px 4px; margin-left: 3px;
+    }
+
+    /* ---- POPUP ---- */
+    #popupOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #popupOverlay.open { display: flex; }
+    #popup {
+      background: white;
+      border-radius: 8px;
+      width: 440px;
+      max-width: 95vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+      overflow: hidden;
+    }
+    #popupHeader {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 15px; background: #2c5282; color: white; flex-shrink: 0;
+    }
+    #popupTitle { font-weight: 600; font-size: 0.9em; }
+    #popupClose { background: none; border: none; color: white; cursor: pointer; font-size: 1.1em; padding: 2px 5px; border-radius: 3px; }
+    #popupClose:hover { background: rgba(255,255,255,0.15); }
+    #popupParticipants { padding: 12px 15px; overflow-y: auto; max-height: 210px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+    .popup-group { margin-bottom: 10px; }
+    .popup-group:last-child { margin-bottom: 0; }
+    .popup-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-weight: 600; font-size: 0.82em; color: #374151; }
+    .popup-quick-btn {
+      background: none; border: 1px solid #3b82f6; color: #3b82f6;
+      border-radius: 3px; cursor: pointer; font-size: 0.72em; padding: 1px 6px;
+    }
+    .popup-quick-btn:hover { background: #eff6ff; }
+    .popup-members { display: flex; flex-wrap: wrap; gap: 5px; }
+    .popup-member-btn {
+      padding: 3px 10px; border-radius: 4px; border: 1px solid #d1d5db;
+      background: white; cursor: pointer; font-size: 0.82em; transition: all 0.1s;
+    }
+    .popup-member-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .popup-member-btn.selected { background: #3b82f6; color: white; border-color: #3b82f6; }
+    #popupText {
+      padding: 12px 15px; border: none; outline: none;
+      resize: vertical; min-height: 110px; font-size: 0.88em;
+      font-family: inherit; line-height: 1.5; background: #fafafa; flex-shrink: 0;
+    }
+
+    /* ---- PRINT ---- */
+    @media print {
+      body { background: white; }
+      #toolbar, #registrySection, #rhythmsSection, #breaksSection, .popup-time-row { display: none !important; }
+      .break-label { display: inline !important; }
+      main { padding: 0; max-width: 100%; }
+      #grid { box-shadow: none; border-radius: 0; }
+      #grid th, #grid td { border: 1px solid #888; }
+      .lesson-cell { cursor: default; }
+      .lesson-cell.has-content { background: #fffde7 !important; -webkit-print-color-adjust: exact; }
+      @page { size: A4 landscape; margin: 1.2cm; }
+    }
+  </style>
+</head>
+<body>
+
+  <header id="toolbar">
+    <div class="toolbar-left"><h1>ClassPlanner</h1></div>
+    <div class="toolbar-center">
+      <button id="prevWeek">◀</button>
+      <span id="weekLabel">–</span>
+      <button id="nextWeek">▶</button>
+    </div>
+    <div class="toolbar-right">
+      <button id="folderBtn">📁 Valitse kansio</button>
+      <span id="folderName">–</span>
+      <button id="saveBtn">💾 Tallenna</button>
+      <button id="loadBtn">📂 Avaa viikko</button>
+      <button id="printBtn">🖨️ Tulosta</button>
+      <button id="editToggle">✏️ Muokkaa rakennetta</button>
+    </div>
+  </header>
+
+  <main>
+    <table id="grid">
+      <thead>
+        <tr id="gridHeadRow">
+          <th>Aika</th>
+        </tr>
+      </thead>
+      <tbody id="gridBody"></tbody>
+    </table>
+
+    <section id="registrySection">
+      <h2>Osallistujarekisteri</h2>
+      <div id="registryGroups"></div>
+      <button id="addGroupBtn">+ Uusi ryhmä</button>
+    </section>
+
+    <section id="rhythmsSection">
+      <h2>Päivärytmit</h2>
+      <div id="rhythmsGroups"></div>
+      <button id="addRhythmBtn">+ Uusi rytmi</button>
+    </section>
+
+    <section id="breaksSection">
+      <h2>Välitauot</h2>
+      <div id="breaksGroups"></div>
+    </section>
+  </main>
+
+  <div id="popupOverlay">
+    <div id="popup">
+      <div id="popupHeader">
+        <span id="popupTitle"></span>
+        <button id="popupClose">✕</button>
+      </div>
+      <div id="popupParticipants"></div>
+      <div class="popup-time-row" id="popupTimeRow">
+        <label>Alku</label>
+        <input type="time" id="popupStartTime" class="popup-time-input">
+        <label>Loppu</label>
+        <input type="time" id="popupEndTime" class="popup-time-input">
+        <button id="popupResetTime">↺ Oletusaika</button>
+      </div>
+      <textarea id="popupText" placeholder="Tunnin sisältö..."></textarea>
+      <div class="popup-copy-row">
+        <label>Kopioi tunti →</label>
+        <select id="copyTargetDay" class="popup-copy-select">
+          <option value="0">Maanantai</option>
+          <option value="1">Tiistai</option>
+          <option value="2">Keskiviikko</option>
+          <option value="3">Torstai</option>
+          <option value="4">Perjantai</option>
+        </select>
+        <select id="copyTargetSlot" class="popup-copy-select">
+          <option value="0">T1</option><option value="1">T2</option><option value="2">T3</option>
+          <option value="3">T4</option><option value="4">T5</option><option value="5">T6</option>
+          <option value="6">T7</option>
+        </select>
+        <button id="copySlotBtn">Kopioi</button>
+        <span id="copySlotFeedback"></span>
+      </div>
+      <div class="popup-lunch-row">
+        <label>🍽️ Ruokailu alkaa</label>
+        <input type="time" id="lunchStartInput" class="lunch-time-input" placeholder="">
+        <select id="lunchDuration" class="lunch-dur-select">
+          <option value="15">15 min</option>
+          <option value="20">20 min</option>
+        </select>
+        <button id="clearLunchBtn">Poista</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =================== CONSTANTS ===================
+    const DAYS      = ['Ma', 'Ti', 'Ke', 'To', 'Pe'];
+    const DAY_FULL  = ['Maanantai', 'Tiistai', 'Keskiviikko', 'Torstai', 'Perjantai'];
+
+    // =================== STATE ===================
+    let dayBreaks = [];       // [dayIdx][{afterLesson, duration}]
+    let registry = [];        // [{name:string, members:string[]}]
+    let weekData = {};        // {weekKey: {dayAbbr: {slotIdx: {participants:[], text:"", startOverride?, endOverride?}}}}
+    let currentWeekOffset = 0;
+    let dirHandle = null;
+    let dirty = false;
+    let popupState = null;    // {dayIdx, slotIdx} or null
+    let popupParticipants = [];
+    let rhythms = [
+      { name: 'A', startMinutes: 480 },
+      { name: 'B', startMinutes: 510 },
+      { name: 'C', startMinutes: 540 },
+      { name: 'D', startMinutes: 570 },
+    ];
+    let dayRhythms = [0, 0, 0, 0, 0];
+
+    // =================== TIME UTILS ===================
+    function minToTime(m) {
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    }
+
+    function getWeekInfo(offset) {
+      const now = new Date();
+      const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dow = (today.getUTCDay() + 6) % 7; // 0=Mon
+      const monday = new Date(today);
+      monday.setUTCDate(today.getUTCDate() - dow + offset * 7);
+      const dates = [];
+      for (let i = 0; i < 5; i++) {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        dates.push(d);
+      }
+      // ISO week: based on Thursday of the week
+      const thu = new Date(monday);
+      thu.setUTCDate(monday.getUTCDate() + 3);
+      const yearStart = new Date(Date.UTC(thu.getUTCFullYear(), 0, 1));
+      const week = Math.ceil(((thu - yearStart) / 86400000 + 1) / 7);
+      return { year: thu.getUTCFullYear(), week, dates };
+    }
+
+    function getWeekKey(offset) {
+      const { year, week } = getWeekInfo(offset);
+      return `${year}_W${String(week).padStart(2, '0')}`;
+    }
+
+    function fmtDate(d) {
+      return `${d.getUTCDate()}.${d.getUTCMonth() + 1}.`;
+    }
+
+    // =================== SCHEDULE (per-day breaks) ===================
+    const LESSON_COUNT = 7;
+
+    function defaultDayBreaks() {
+      // 15-min break after each lesson except the last
+      return Array.from({ length: 5 }, () =>
+        Array.from({ length: LESSON_COUNT - 1 }, (_, i) => ({ afterLesson: i, duration: 15 }))
+      );
+    }
+
+    function computeDaySlotTime(dayIdx, slotIdx) {
+      const startMin = rhythms[dayRhythms[dayIdx]].startMinutes;
+      let time = startMin;
+      for (let i = 0; i < slotIdx; i++) {
+        time += 45;
+        const brk = (dayBreaks[dayIdx] || []).find(b => b.afterLesson === i);
+        if (brk) time += brk.duration;
+      }
+      return { start: time, end: time + 45 };
+    }
+
+    function getCellTime(dayIdx, slotIdx, weekKey) {
+      const cell = ((weekData[weekKey] || {})[DAYS[dayIdx]] || {})[String(slotIdx)];
+      if (cell && cell.startOverride != null) {
+        return { start: cell.startOverride, end: cell.endOverride };
+      }
+      return computeDaySlotTime(dayIdx, slotIdx);
+    }
+
+    // =================== RENDER GRID HEADER ===================
+    function renderGridHeader() {
+      const headRow = document.getElementById('gridHeadRow');
+      const isEdit = document.body.classList.contains('edit-mode');
+      while (headRow.children.length > 1) headRow.removeChild(headRow.lastChild);
+      for (let d = 0; d < 5; d++) {
+        const th = document.createElement('th');
+        if (!isEdit) {
+          th.textContent = `${DAY_FULL[d]} (${rhythms[dayRhythms[d]].name || '?'})`;
+        } else {
+          const span = document.createElement('span');
+          span.textContent = DAY_FULL[d];
+          th.appendChild(span);
+          const sel = document.createElement('select');
+          sel.className = 'day-th-select';
+          rhythms.forEach((r, ri) => {
+            const opt = document.createElement('option');
+            opt.value = String(ri);
+            opt.textContent = r.name || `Rytmi ${ri + 1}`;
+            if (dayRhythms[d] === ri) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          const capD = d;
+          sel.addEventListener('change', () => { dayRhythms[capD] = parseInt(sel.value); renderGridHeader(); });
+          th.appendChild(sel);
+        }
+        headRow.appendChild(th);
+      }
+    }
+
+    // =================== RENDER GRID ===================
+    function renderGrid() {
+      renderGridHeader();
+      const tbody = document.getElementById('gridBody');
+      tbody.innerHTML = '';
+      const key = getWeekKey(currentWeekOffset);
+      const dayData = weekData[key] || {};
+
+      for (let li = 0; li < LESSON_COUNT; li++) {
+        const curLi = li;
+        const tr = document.createElement('tr');
+
+        const tc = document.createElement('td');
+        tc.className = 'time-cell';
+        tc.textContent = `T${li + 1}`;
+        tr.appendChild(tc);
+
+        for (let d = 0; d < 5; d++) {
+          const td = document.createElement('td');
+          td.className = 'lesson-cell';
+
+          const timeDiv = document.createElement('div');
+          const t = getCellTime(d, curLi, key);
+          timeDiv.className = 'cell-time';
+          const hasOverride = ((weekData[key] || {})[DAYS[d]] || {})[String(curLi)]?.startOverride != null;
+          if (hasOverride) timeDiv.classList.add('time-overridden');
+          timeDiv.textContent = minToTime(t.start) + '–' + minToTime(t.end);
+          td.appendChild(timeDiv);
+
+          const cell = (dayData[DAYS[d]] || {})[String(curLi)];
+          if (cell && (cell.participants?.length || cell.text)) {
+            td.classList.add('has-content');
+            if (cell.participants?.length) {
+              const pDiv = document.createElement('div');
+              pDiv.className = 'cell-participants';
+              pDiv.textContent = cell.participants.join(', ');
+              td.appendChild(pDiv);
+            }
+            if (cell.text) {
+              const tDiv = document.createElement('div');
+              tDiv.className = 'cell-text';
+              tDiv.textContent = cell.text;
+              td.appendChild(tDiv);
+            }
+          }
+
+          const brk = (dayBreaks[d] || []).find(b => b.afterLesson === curLi);
+          if (brk) {
+            const brkDiv = document.createElement('div');
+            brkDiv.className = 'cell-break';
+            brkDiv.textContent = `░ ${brk.duration} min ░`;
+            td.appendChild(brkDiv);
+          }
+
+          if (cell && cell.lunchStart != null) {
+            const lDiv = document.createElement('div');
+            lDiv.className = 'cell-lunch';
+            lDiv.textContent = `🍽️ ${minToTime(cell.lunchStart)} (${cell.lunchDuration || 15}min)`;
+            td.appendChild(lDiv);
+          }
+
+          td.addEventListener('click', () => openPopup(d, curLi));
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+    }
+
+    // =================== HEADER ===================
+    function updateHeader() {
+      const { week, year, dates } = getWeekInfo(currentWeekOffset);
+      const thisYear = new Date().getFullYear();
+      const yearSuffix = year !== thisYear ? ' ' + year : '';
+      document.getElementById('weekLabel').textContent =
+        `Viikko ${week}  (${fmtDate(dates[0])} – ${fmtDate(dates[4])}${yearSuffix})`;
+    }
+
+    // =================== POPUP ===================
+    function openPopup(dayIdx, slotIdx) {
+      popupState = { dayIdx, slotIdx };
+      const key = getWeekKey(currentWeekOffset);
+      const cell = ((weekData[key] || {})[DAYS[dayIdx]] || {})[String(slotIdx)] || { participants: [], text: '' };
+      popupParticipants = [...(cell.participants || [])];
+
+      const t = getCellTime(dayIdx, slotIdx, key);
+      document.getElementById('popupTitle').textContent =
+        `${DAY_FULL[dayIdx]}  T${slotIdx + 1}`;
+
+      document.getElementById('popupStartTime').value = minToTime(t.start);
+      document.getElementById('popupEndTime').value = minToTime(t.end);
+      const timeRow = document.getElementById('popupTimeRow');
+      if (cell.startOverride != null) timeRow.classList.add('has-override');
+      else timeRow.classList.remove('has-override');
+
+      document.getElementById('popupText').value = cell.text || '';
+      document.getElementById('lunchStartInput').value = cell.lunchStart != null ? minToTime(cell.lunchStart) : '';
+      document.getElementById('lunchDuration').value = String(cell.lunchDuration || 15);
+      renderPopupParticipants();
+      document.getElementById('popupOverlay').classList.add('open');
+      document.getElementById('popupText').focus();
+    }
+
+    function closePopup() {
+      if (!popupState) return;
+      const { dayIdx, slotIdx } = popupState;
+      const key = getWeekKey(currentWeekOffset);
+      const text = document.getElementById('popupText').value;
+
+      const startVal = document.getElementById('popupStartTime').value;
+      const endVal = document.getElementById('popupEndTime').value;
+      const computed = computeDaySlotTime(dayIdx, slotIdx);
+      const startMin = parseInt(startVal.split(':')[0]) * 60 + parseInt(startVal.split(':')[1]);
+      const endMin = parseInt(endVal.split(':')[0]) * 60 + parseInt(endVal.split(':')[1]);
+      const hasOverride = startMin !== computed.start || endMin !== computed.end;
+
+      if (!weekData[key]) weekData[key] = {};
+      if (!weekData[key][DAYS[dayIdx]]) weekData[key][DAYS[dayIdx]] = {};
+      const slotData = { participants: [...popupParticipants], text };
+      if (hasOverride) { slotData.startOverride = startMin; slotData.endOverride = endMin; }
+      const lunchVal = document.getElementById('lunchStartInput').value;
+      if (lunchVal) {
+        const lp = lunchVal.split(':');
+        slotData.lunchStart = parseInt(lp[0]) * 60 + parseInt(lp[1]);
+        slotData.lunchDuration = parseInt(document.getElementById('lunchDuration').value);
+      }
+      weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
+      dirty = true;
+      popupState = null;
+      popupParticipants = [];
+      document.getElementById('popupOverlay').classList.remove('open');
+      renderGrid();
+    }
+
+    function renderPopupParticipants() {
+      const container = document.getElementById('popupParticipants');
+      container.innerHTML = '';
+      if (!registry.length) {
+        const em = document.createElement('em');
+        em.style.cssText = 'color:#9ca3af;font-size:0.85em';
+        em.textContent = 'Ei ryhmiä. Lisää osallistujia muokkaustilassa.';
+        container.appendChild(em);
+        return;
+      }
+      for (const group of registry) {
+        const gdiv = document.createElement('div');
+        gdiv.className = 'popup-group';
+
+        const ghdr = document.createElement('div');
+        ghdr.className = 'popup-group-header';
+
+        const gname = document.createElement('span');
+        gname.textContent = group.name || '(ryhmä)';
+        ghdr.appendChild(gname);
+
+        const qBtn = document.createElement('button');
+        qBtn.className = 'popup-quick-btn';
+        qBtn.textContent = 'Valitse kaikki →';
+        const cap = group;
+        qBtn.addEventListener('click', () => {
+          popupParticipants = cap.members.filter(m => m.trim()).slice();
+          renderPopupParticipants();
+        });
+        ghdr.appendChild(qBtn);
+        gdiv.appendChild(ghdr);
+
+        const mems = document.createElement('div');
+        mems.className = 'popup-members';
+        for (const m of group.members) {
+          if (!m.trim()) continue;
+          const btn = document.createElement('button');
+          btn.className = 'popup-member-btn' + (popupParticipants.includes(m) ? ' selected' : '');
+          btn.textContent = m;
+          const capM = m;
+          btn.addEventListener('click', () => {
+            const idx = popupParticipants.indexOf(capM);
+            if (idx >= 0) popupParticipants.splice(idx, 1);
+            else popupParticipants.push(capM);
+            renderPopupParticipants();
+          });
+          mems.appendChild(btn);
+        }
+        gdiv.appendChild(mems);
+        container.appendChild(gdiv);
+      }
+    }
+
+    // =================== REGISTRY RENDER ===================
+    function renderRegistry() {
+      const container = document.getElementById('registryGroups');
+      container.innerHTML = '';
+      registry.forEach((group, gi) => {
+        const gdiv = document.createElement('div');
+        gdiv.className = 'reg-group';
+
+        const ghdr = document.createElement('div');
+        ghdr.className = 'reg-group-header';
+
+        const nameIn = document.createElement('input');
+        nameIn.className = 'group-name-input';
+        nameIn.value = group.name;
+        nameIn.placeholder = 'Ryhmän nimi';
+        nameIn.addEventListener('input', () => { group.name = nameIn.value; });
+        ghdr.appendChild(nameIn);
+
+        const delG = document.createElement('button');
+        delG.className = 'del-btn';
+        delG.title = 'Poista ryhmä';
+        delG.textContent = '🗑';
+        delG.addEventListener('click', () => { registry.splice(gi, 1); renderRegistry(); });
+        ghdr.appendChild(delG);
+        gdiv.appendChild(ghdr);
+
+        const mems = document.createElement('div');
+        mems.className = 'reg-group-members';
+
+        group.members.forEach((m, mi) => {
+          const item = document.createElement('div');
+          item.className = 'member-item';
+
+          const inp = document.createElement('input');
+          inp.className = 'member-name-input';
+          inp.value = m;
+          inp.placeholder = 'Nimi';
+          inp.addEventListener('input', () => { group.members[mi] = inp.value; });
+          item.appendChild(inp);
+
+          const delM = document.createElement('button');
+          delM.className = 'del-btn';
+          delM.textContent = '×';
+          delM.addEventListener('click', () => { group.members.splice(mi, 1); renderRegistry(); });
+          item.appendChild(delM);
+          mems.appendChild(item);
+        });
+
+        const addM = document.createElement('button');
+        addM.className = 'add-member-btn';
+        addM.textContent = '+ Lisää nimi';
+        addM.addEventListener('click', () => { group.members.push(''); renderRegistry(); });
+        mems.appendChild(addM);
+
+        gdiv.appendChild(mems);
+        container.appendChild(gdiv);
+      });
+    }
+
+    // =================== RHYTHMS RENDER ===================
+    function renderRhythms() {
+      const container = document.getElementById('rhythmsGroups');
+      container.innerHTML = '';
+      rhythms.forEach((r, ri) => {
+        const row = document.createElement('div');
+        row.className = 'rhythm-row';
+
+        const nameIn = document.createElement('input');
+        nameIn.className = 'rhythm-name-input';
+        nameIn.value = r.name;
+        nameIn.placeholder = 'Nimi';
+        nameIn.addEventListener('input', () => { r.name = nameIn.value; renderGridHeader(); });
+        row.appendChild(nameIn);
+
+        const timeIn = document.createElement('input');
+        timeIn.type = 'time';
+        timeIn.className = 'rhythm-time-input';
+        timeIn.value = minToTime(r.startMinutes);
+        timeIn.addEventListener('change', () => {
+          const parts = timeIn.value.split(':');
+          r.startMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          renderGrid();
+        });
+        row.appendChild(timeIn);
+
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'font-size:0.8em;color:#6b7280;';
+        lbl.textContent = '(aloitusaika)';
+        row.appendChild(lbl);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del-btn';
+        delBtn.textContent = '🗑';
+        delBtn.title = 'Poista rytmi';
+        delBtn.addEventListener('click', () => {
+          if (rhythms.length <= 1) { alert('Vähintään yksi rytmi tarvitaan.'); return; }
+          rhythms.splice(ri, 1);
+          dayRhythms = dayRhythms.map(d => {
+            if (d === ri) return 0;
+            if (d > ri) return d - 1;
+            return d;
+          });
+          renderRhythms();
+          renderGrid();
+        });
+        row.appendChild(delBtn);
+
+        container.appendChild(row);
+      });
+    }
+
+    // =================== BREAKS EDITOR ===================
+    function renderBreaksEditor() {
+      const container = document.getElementById('breaksGroups');
+      container.innerHTML = '';
+      for (let d = 0; d < 5; d++) {
+        const row = document.createElement('div');
+        row.className = 'breaks-day-row';
+        const lbl = document.createElement('span');
+        lbl.className = 'breaks-day-label';
+        lbl.textContent = DAY_FULL[d];
+        row.appendChild(lbl);
+
+        for (let li = 0; li < LESSON_COUNT; li++) {
+          const slotLbl = document.createElement('span');
+          slotLbl.className = 'break-slot-label';
+          slotLbl.textContent = `T${li + 1}`;
+          row.appendChild(slotLbl);
+
+          if (li < LESSON_COUNT - 1) {
+            const brk = (dayBreaks[d] || []).find(b => b.afterLesson === li);
+            if (brk) {
+              const entry = document.createElement('span');
+              entry.className = 'break-entry';
+              const dec = document.createElement('button'); dec.className = 'break-dur-dec'; dec.textContent = '−';
+              const durSpan = document.createElement('span'); durSpan.textContent = brk.duration + 'min';
+              const inc = document.createElement('button'); inc.className = 'break-dur-inc'; inc.textContent = '+';
+              const del = document.createElement('button'); del.className = 'break-del-entry'; del.textContent = '×';
+              const capD = d, capLi = li, capBrk = brk;
+              dec.addEventListener('click', () => { if (capBrk.duration > 15) { capBrk.duration -= 5; durSpan.textContent = capBrk.duration + 'min'; renderGrid(); } });
+              inc.addEventListener('click', () => { if (capBrk.duration < 30) { capBrk.duration += 5; durSpan.textContent = capBrk.duration + 'min'; renderGrid(); } });
+              del.addEventListener('click', () => { dayBreaks[capD] = dayBreaks[capD].filter(b => b.afterLesson !== capLi); renderBreaksEditor(); renderGrid(); });
+              entry.appendChild(dec); entry.appendChild(durSpan); entry.appendChild(inc); entry.appendChild(del);
+              row.appendChild(entry);
+            } else {
+              const addBtn = document.createElement('button');
+              addBtn.className = 'break-add-btn'; addBtn.textContent = '+';
+              addBtn.title = `Lisää välkkä T${li + 1} jälkeen`;
+              const capD = d, capLi = li;
+              addBtn.addEventListener('click', () => {
+                if (!dayBreaks[capD]) dayBreaks[capD] = [];
+                dayBreaks[capD].push({ afterLesson: capLi, duration: 15 });
+                dayBreaks[capD].sort((a, b) => a.afterLesson - b.afterLesson);
+                renderBreaksEditor(); renderGrid();
+              });
+              row.appendChild(addBtn);
+            }
+          }
+        }
+        container.appendChild(row);
+      }
+
+      // Day copy form
+      const copyRow = document.createElement('div');
+      copyRow.className = 'copy-row';
+      const copyLbl = document.createElement('label');
+      copyLbl.textContent = 'Kopioi päivän asetukset:';
+      const srcSel = document.createElement('select');
+      srcSel.className = 'copy-day-select';
+      const tgtSel = document.createElement('select');
+      tgtSel.className = 'copy-day-select';
+      DAY_FULL.forEach((name, i) => {
+        const o1 = document.createElement('option'); o1.value = i; o1.textContent = name; srcSel.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = i; o2.textContent = name; tgtSel.appendChild(o2);
+      });
+      if (DAY_FULL.length > 1) tgtSel.value = '1';
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-day-btn'; copyBtn.textContent = 'Kopioi';
+      const feedbackSpan = document.createElement('span');
+      feedbackSpan.id = 'copyDayFeedback';
+      copyBtn.addEventListener('click', () => {
+        const src = parseInt(srcSel.value), tgt = parseInt(tgtSel.value);
+        if (src === tgt) return;
+        dayBreaks[tgt] = (dayBreaks[src] || []).map(b => ({...b}));
+        dayRhythms[tgt] = dayRhythms[src];
+        renderBreaksEditor(); renderGrid();
+        feedbackSpan.textContent = '✓ Kopioitu';
+        setTimeout(() => { feedbackSpan.textContent = ''; }, 1500);
+      });
+      copyRow.appendChild(copyLbl);
+      copyRow.appendChild(srcSel);
+      copyRow.appendChild(document.createTextNode(' → '));
+      copyRow.appendChild(tgtSel);
+      copyRow.appendChild(copyBtn);
+      copyRow.appendChild(feedbackSpan);
+      container.appendChild(copyRow);
+    }
+
+    // =================== EDIT MODE ===================
+    async function toggleEditMode() {
+      const isEdit = document.body.classList.toggle('edit-mode');
+      document.getElementById('editToggle').textContent = isEdit ? '✓ Valmis' : '✏️ Muokkaa rakennetta';
+      if (isEdit) { renderRhythms(); renderBreaksEditor(); }
+      renderGrid();
+      if (!isEdit) await saveConfig();
+    }
+
+    // =================== FILE PERSISTENCE ===================
+    async function selectFolder() {
+      if (!window.showDirectoryPicker) {
+        alert('Selaimesi ei tue kansionvalintaa (showDirectoryPicker). Käytä Chrome- tai Edge-selainta localhost-osoitteella.');
+        return;
+      }
+      try {
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        document.getElementById('folderName').textContent = dirHandle.name;
+        await loadConfig();
+        await loadWeek();
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error('Kansion valinta epäonnistui:', e);
+      }
+    }
+
+    async function saveWeek() {
+      if (!dirHandle) { alert('Valitse ensin tallennuskansio (📁).'); return; }
+      const key = getWeekKey(currentWeekOffset);
+      try {
+        const fh = await dirHandle.getFileHandle(`viikko_${key}.json`, { create: true });
+        const w = await fh.createWritable();
+        await w.write(JSON.stringify({ weekKey: key, slots: weekData[key] || {} }, null, 2));
+        await w.close();
+        dirty = false;
+        // Brief visual feedback without alert
+        const btn = document.getElementById('saveBtn');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Tallennettu';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      } catch (e) {
+        alert('Tallentaminen epäonnistui: ' + e.message);
+      }
+    }
+
+    async function loadWeek() {
+      if (!dirHandle) return;
+      const key = getWeekKey(currentWeekOffset);
+      try {
+        const fh = await dirHandle.getFileHandle(`viikko_${key}.json`);
+        const file = await fh.getFile();
+        const data = JSON.parse(await file.text());
+        if (data.slots) weekData[key] = data.slots;
+        renderGrid();
+      } catch (e) {
+        if (e.name !== 'NotFoundError') console.error('Viikon lataus epäonnistui:', e);
+        // No file for this week – empty grid is correct
+      }
+    }
+
+    async function saveConfig() {
+      if (!dirHandle) return;
+      try {
+        const fh = await dirHandle.getFileHandle('config.json', { create: true });
+        const w = await fh.createWritable();
+        await w.write(JSON.stringify({ dayBreaks, registry, rhythms, dayRhythms }, null, 2));
+        await w.close();
+      } catch (e) {
+        console.error('Konfiguraation tallennus epäonnistui:', e);
+      }
+    }
+
+    async function loadConfig() {
+      if (!dirHandle) return;
+      try {
+        const fh = await dirHandle.getFileHandle('config.json');
+        const file = await fh.getFile();
+        const data = JSON.parse(await file.text());
+        if (Array.isArray(data.dayBreaks) && data.dayBreaks.length === 5) {
+          dayBreaks = data.dayBreaks;
+        } else if (Array.isArray(data.schedule) && data.schedule.length) {
+          // Migrate legacy schedule to per-day breaks
+          let lessonCount = 0;
+          const breaks = [];
+          for (const slot of data.schedule) {
+            if (slot.type === 'lesson') lessonCount++;
+            else if (slot.type === 'break') breaks.push({ afterLesson: lessonCount - 1, duration: slot.duration });
+          }
+          dayBreaks = Array.from({ length: 5 }, () => breaks.map(b => ({ ...b })));
+        }
+        if (Array.isArray(data.registry)) registry = data.registry;
+        if (Array.isArray(data.rhythms) && data.rhythms.length) rhythms = data.rhythms;
+        if (Array.isArray(data.dayRhythms) && data.dayRhythms.length === 5) dayRhythms = data.dayRhythms;
+        renderGrid();
+        renderRegistry();
+        renderRhythms();
+        renderBreaksEditor();
+      } catch (e) {
+        if (e.name !== 'NotFoundError') console.error('Konfiguraation lataus epäonnistui:', e);
+      }
+    }
+
+    // =================== WEEK NAVIGATION ===================
+    async function navigate(delta) {
+      if (dirty && !confirm('Viikolla on tallentamattomia muutoksia. Vaihdetaanko silti?')) return;
+      currentWeekOffset += delta;
+      dirty = false;
+      updateHeader();
+      renderGrid();
+      if (dirHandle) await loadWeek();
+    }
+
+    // =================== UNSAVED CHANGES GUARD ===================
+    window.addEventListener('beforeunload', e => {
+      if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    // =================== EVENT WIRING ===================
+    document.getElementById('editToggle').addEventListener('click', toggleEditMode);
+    document.getElementById('folderBtn').addEventListener('click', selectFolder);
+    document.getElementById('saveBtn').addEventListener('click', saveWeek);
+    document.getElementById('loadBtn').addEventListener('click', loadWeek);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('prevWeek').addEventListener('click', () => navigate(-1));
+    document.getElementById('nextWeek').addEventListener('click', () => navigate(1));
+    document.getElementById('popupClose').addEventListener('click', closePopup);
+    document.getElementById('popupOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('popupOverlay')) closePopup();
+    });
+    document.getElementById('addGroupBtn').addEventListener('click', () => {
+      registry.push({ name: '', members: [] });
+      renderRegistry();
+    });
+    document.getElementById('addRhythmBtn').addEventListener('click', () => {
+      rhythms.push({ name: '', startMinutes: 480 });
+      renderRhythms();
+    });
+    document.getElementById('popupResetTime').addEventListener('click', () => {
+      if (!popupState) return;
+      const { dayIdx, slotIdx } = popupState;
+      const key = getWeekKey(currentWeekOffset);
+      const cell = ((weekData[key] || {})[DAYS[dayIdx]] || {})[String(slotIdx)];
+      if (cell) { delete cell.startOverride; delete cell.endOverride; }
+      const t = computeDaySlotTime(dayIdx, slotIdx);
+      document.getElementById('popupStartTime').value = minToTime(t.start);
+      document.getElementById('popupEndTime').value = minToTime(t.end);
+      document.getElementById('popupTimeRow').classList.remove('has-override');
+    });
+    document.getElementById('copySlotBtn').addEventListener('click', () => {
+      if (!popupState) return;
+      const { dayIdx, slotIdx } = popupState;
+      const key = getWeekKey(currentWeekOffset);
+      const tgtDay = parseInt(document.getElementById('copyTargetDay').value);
+      const tgtSlot = parseInt(document.getElementById('copyTargetSlot').value);
+      const startVal = document.getElementById('popupStartTime').value;
+      const endVal = document.getElementById('popupEndTime').value;
+      const startMin = parseInt(startVal.split(':')[0]) * 60 + parseInt(startVal.split(':')[1]);
+      const endMin = parseInt(endVal.split(':')[0]) * 60 + parseInt(endVal.split(':')[1]);
+      const computed = computeDaySlotTime(dayIdx, slotIdx);
+      const hasOverride = startMin !== computed.start || endMin !== computed.end;
+      if (!weekData[key]) weekData[key] = {};
+      if (!weekData[key][DAYS[tgtDay]]) weekData[key][DAYS[tgtDay]] = {};
+      const copy = { participants: [...popupParticipants], text: document.getElementById('popupText').value };
+      if (hasOverride) { copy.startOverride = startMin; copy.endOverride = endMin; }
+      weekData[key][DAYS[tgtDay]][String(tgtSlot)] = copy;
+      dirty = true;
+      renderGrid();
+      const fb = document.getElementById('copySlotFeedback');
+      fb.textContent = '✓ Kopioitu';
+      setTimeout(() => { fb.textContent = ''; }, 1500);
+    });
+
+    document.getElementById('clearLunchBtn').addEventListener('click', () => {
+      document.getElementById('lunchStartInput').value = '';
+    });
+    dayBreaks = defaultDayBreaks();
+    registry = [];
+    updateHeader();
+    renderGrid();
+    renderRegistry();
+    renderRhythms();
+    renderBreaksEditor();
+  </script>
+
+</body>
+</html>
