@@ -1,10 +1,4 @@
-# per-day-breaks Specification
-
-## Purpose
-
-Allows the teacher to configure break positions and durations independently for each weekday, so that the break schedule on Monday does not have to match Tuesday's, and so on. Each day's break configuration is persisted in the application configuration and applies to all weeks.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Per-day break configuration
 The system SHALL maintain a separate break configuration for each of the five weekdays. Each configuration SHALL be an ordered list of break entries, where each entry specifies which lesson slot the break follows, the break duration in minutes, and an optional type. All five configurations MAY differ from each other. A day with no entries in its configuration has no breaks between any lessons. The system SHALL initialise all five day configurations as empty; no breaks are pre-populated.
@@ -54,25 +48,3 @@ The system SHALL render a visual break indicator at the bottom of a lesson cell 
 #### Scenario: No indicator when no break
 - **WHEN** a lesson cell's day has no break after that lesson slot
 - **THEN** no break indicator appears in that cell
-
-### Requirement: Break configuration persistence
-The system SHALL save the per-day break configurations to `config.json` when the teacher exits edit mode. The configurations SHALL be restored from `config.json` on page load. When loading a `config.json` that contains a legacy `schedule` array and no `dayBreaks` field, the system SHALL derive `dayBreaks` from the `schedule` array by copying the same break structure to all five days.
-
-#### Scenario: Config saved with dayBreaks
-- **WHEN** the teacher exits edit mode
-- **THEN** `config.json` contains a `dayBreaks` field with all five day configurations
-
-#### Scenario: Migration from legacy config
-- **WHEN** the application loads a `config.json` that has a `schedule` array but no `dayBreaks` field
-- **THEN** the break structure is extracted from `schedule` and applied equally to all five days
-
-### Requirement: Day settings copy
-The system SHALL provide a control in the Välitauot editor panel (edit mode) that allows the teacher to copy one day's structural configuration to another day. Copying SHALL transfer the source day's break entries (`dayBreaks`) and rhythm assignment (`dayRhythms`) to the target day, replacing the target's existing settings. The source and target days SHALL each be selected from a dropdown listing the five weekdays. The teacher SHALL not be able to copy a day to itself.
-
-#### Scenario: Copy day settings to another day
-- **WHEN** the teacher selects a source day, a different target day, and activates the copy control
-- **THEN** the target day's break entries and rhythm assignment are replaced with those of the source day, the breaks editor re-renders to reflect the change, and the week grid updates immediately
-
-#### Scenario: Prevent copy to same day
-- **WHEN** the teacher selects the same day as both source and target
-- **THEN** the copy control is disabled or produces no effect

@@ -89,6 +89,17 @@
 
     .cell-text { font-size: 0.82em; line-height: 1.35; color: #374151; white-space: pre-wrap; }
     .cell-break { font-size: 0.7em; color: #9ca3af; text-align: center; padding: 3px 0 2px; border-top: 1px dashed #e5e7eb; margin-top: 4px; }
+    .cell-lunch-break { font-size: 0.72em; color: #92400e; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .break-entry-lunch {
+      display: inline-flex; align-items: center; gap: 2px;
+      background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px;
+      padding: 2px 4px; font-size: 0.78em;
+    }
+    .break-lunch-btn {
+      background: none; border: 1px dashed #d97706; color: #92400e;
+      border-radius: 4px; cursor: pointer; padding: 0px 5px; font-size: 0.78em; line-height: 1.6;
+    }
+    .break-lunch-btn:hover { background: #fef3c7; }
     .cell-lunch { font-size: 0.72em; color: #b45309; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .popup-lunch-row {
       display: flex; align-items: center; gap: 8px; padding: 8px 15px;
@@ -161,6 +172,9 @@
     .copy-day-select { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
     .copy-day-btn { background: none; border: 1px solid #3b82f6; color: #3b82f6; border-radius: 4px; cursor: pointer; font-size: 0.78em; padding: 3px 8px; }
     .copy-day-btn:hover { background: #eff6ff; }
+    .copy-all-btn { background: none; border: 1px solid #7c3aed; color: #7c3aed; border-radius: 4px; cursor: pointer; font-size: 0.78em; padding: 3px 8px; }
+    .copy-all-btn:hover { background: #ede9fe; }
+    .undo-copy-btn { background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.78em; text-decoration: underline; padding: 0 4px; }
     #copyDayFeedback { font-size: 0.78em; color: #16a34a; }
 
     /* ---- REGISTRY SECTION ---- */
@@ -373,7 +387,7 @@
       </div>
       <div class="popup-lunch-row">
         <label>🍽️ Ruokailu alkaa</label>
-        <input type="time" id="lunchStartInput" class="lunch-time-input" placeholder="">
+        <input type="time" id="lunchStartInput" class="lunch-time-input">
         <select id="lunchDuration" class="lunch-dur-select">
           <option value="15">15 min</option>
           <option value="20">20 min</option>
@@ -404,6 +418,7 @@
       { name: 'D', startMinutes: 570 },
     ];
     let dayRhythms = [0, 0, 0, 0, 0];
+    let undoState = null;  // {weekKey, affected:[{dayIdx, breaks, rhythm, cells}]}
 
     // =================== TIME UTILS ===================
     function minToTime(m) {
@@ -443,10 +458,7 @@
     const LESSON_COUNT = 7;
 
     function defaultDayBreaks() {
-      // 15-min break after each lesson except the last
-      return Array.from({ length: 5 }, () =>
-        Array.from({ length: LESSON_COUNT - 1 }, (_, i) => ({ afterLesson: i, duration: 15 }))
-      );
+      return Array.from({ length: 5 }, () => []);
     }
 
     function computeDaySlotTime(dayIdx, slotIdx) {
@@ -460,12 +472,28 @@
       return { start: time, end: time + 45 };
     }
 
+    function computeCascadingSlotTime(dayIdx, slotIdx, weekKey) {
+      const startMin = rhythms[dayRhythms[dayIdx]].startMinutes;
+      let time = startMin;
+      for (let i = 0; i < slotIdx; i++) {
+        const prevCell = ((weekData[weekKey] || {})[DAYS[dayIdx]] || {})[String(i)];
+        if (prevCell && prevCell.endOverride != null) {
+          time = prevCell.endOverride;
+        } else {
+          time += 45;
+        }
+        const brk = (dayBreaks[dayIdx] || []).find(b => b.afterLesson === i);
+        if (brk) time += brk.duration;
+      }
+      return { start: time, end: time + 45 };
+    }
+
     function getCellTime(dayIdx, slotIdx, weekKey) {
       const cell = ((weekData[weekKey] || {})[DAYS[dayIdx]] || {})[String(slotIdx)];
       if (cell && cell.startOverride != null) {
         return { start: cell.startOverride, end: cell.endOverride };
       }
-      return computeDaySlotTime(dayIdx, slotIdx);
+      return computeCascadingSlotTime(dayIdx, slotIdx, weekKey);
     }
 
     // =================== RENDER GRID HEADER ===================
@@ -608,7 +636,7 @@
 
       const startVal = document.getElementById('popupStartTime').value;
       const endVal = document.getElementById('popupEndTime').value;
-      const computed = computeDaySlotTime(dayIdx, slotIdx);
+      const computed = computeCascadingSlotTime(dayIdx, slotIdx, key);
       const startMin = parseInt(startVal.split(':')[0]) * 60 + parseInt(startVal.split(':')[1]);
       const endMin = parseInt(endVal.split(':')[0]) * 60 + parseInt(endVal.split(':')[1]);
       const hasOverride = startMin !== computed.start || endMin !== computed.end;
@@ -657,7 +685,8 @@
         qBtn.textContent = 'Valitse kaikki →';
         const cap = group;
         qBtn.addEventListener('click', () => {
-          popupParticipants = cap.members.filter(m => m.trim()).slice();
+          const newM = cap.members.filter(m => m.trim());
+          for (const m of newM) { if (!popupParticipants.includes(m)) popupParticipants.push(m); }
           renderPopupParticipants();
         });
         ghdr.appendChild(qBtn);
@@ -796,6 +825,28 @@
     }
 
     // =================== BREAKS EDITOR ===================
+    function performCopy(src, targets) {
+      const key = getWeekKey(currentWeekOffset);
+      undoState = {
+        weekKey: key,
+        affected: targets.map(tgt => ({
+          dayIdx: tgt,
+          breaks: JSON.parse(JSON.stringify(dayBreaks[tgt] || [])),
+          rhythm: dayRhythms[tgt],
+          cells: JSON.parse(JSON.stringify((weekData[key] || {})[DAYS[tgt]] || {}))
+        }))
+      };
+      const srcCells = JSON.parse(JSON.stringify((weekData[key] || {})[DAYS[src]] || {}));
+      for (const tgt of targets) {
+        dayBreaks[tgt] = JSON.parse(JSON.stringify(dayBreaks[src] || []));
+        dayRhythms[tgt] = dayRhythms[src];
+        if (!weekData[key]) weekData[key] = {};
+        weekData[key][DAYS[tgt]] = JSON.parse(JSON.stringify(srcCells));
+      }
+      dirty = true;
+      renderBreaksEditor(); renderGrid();
+    }
+
     function renderBreaksEditor() {
       const container = document.getElementById('breaksGroups');
       container.innerHTML = '';
@@ -850,7 +901,7 @@
       const copyRow = document.createElement('div');
       copyRow.className = 'copy-row';
       const copyLbl = document.createElement('label');
-      copyLbl.textContent = 'Kopioi päivän asetukset:';
+      copyLbl.textContent = 'Kopioi p\u00e4iv\u00e4n asetukset:';
       const srcSel = document.createElement('select');
       srcSel.className = 'copy-day-select';
       const tgtSel = document.createElement('select');
@@ -862,23 +913,51 @@
       if (DAY_FULL.length > 1) tgtSel.value = '1';
       const copyBtn = document.createElement('button');
       copyBtn.className = 'copy-day-btn'; copyBtn.textContent = 'Kopioi';
+      const copyAllBtn = document.createElement('button');
+      copyAllBtn.className = 'copy-all-btn'; copyAllBtn.textContent = 'Kopioi kaikille';
       const feedbackSpan = document.createElement('span');
       feedbackSpan.id = 'copyDayFeedback';
+      feedbackSpan.style.cssText = 'font-size:0.78em;color:#16a34a;';
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'undo-copy-btn'; undoBtn.textContent = '\u21ba Kumoa'; undoBtn.style.display = 'none';
+
       copyBtn.addEventListener('click', () => {
         const src = parseInt(srcSel.value), tgt = parseInt(tgtSel.value);
         if (src === tgt) return;
-        dayBreaks[tgt] = (dayBreaks[src] || []).map(b => ({...b}));
-        dayRhythms[tgt] = dayRhythms[src];
-        renderBreaksEditor(); renderGrid();
-        feedbackSpan.textContent = '✓ Kopioitu';
-        setTimeout(() => { feedbackSpan.textContent = ''; }, 1500);
+        performCopy(src, [tgt]);
+        feedbackSpan.textContent = '\u2713 Kopioitu'; undoBtn.style.display = '';
+        setTimeout(() => { feedbackSpan.textContent = ''; }, 2000);
       });
+      copyAllBtn.addEventListener('click', () => {
+        const src = parseInt(srcSel.value);
+        const targets = [0,1,2,3,4].filter(d => d !== src);
+        performCopy(src, targets);
+        feedbackSpan.textContent = '\u2713 Kopioitu kaikille'; undoBtn.style.display = '';
+        setTimeout(() => { feedbackSpan.textContent = ''; }, 2000);
+      });
+      undoBtn.addEventListener('click', () => {
+        if (!undoState) return;
+        const key = undoState.weekKey;
+        for (const { dayIdx, breaks, rhythm, cells } of undoState.affected) {
+          dayBreaks[dayIdx] = breaks;
+          dayRhythms[dayIdx] = rhythm;
+          if (!weekData[key]) weekData[key] = {};
+          weekData[key][DAYS[dayIdx]] = cells;
+        }
+        undoState = null;
+        undoBtn.style.display = 'none';
+        dirty = true;
+        renderBreaksEditor(); renderGrid();
+      });
+
       copyRow.appendChild(copyLbl);
       copyRow.appendChild(srcSel);
-      copyRow.appendChild(document.createTextNode(' → '));
+      copyRow.appendChild(document.createTextNode(' \u2192 '));
       copyRow.appendChild(tgtSel);
       copyRow.appendChild(copyBtn);
+      copyRow.appendChild(copyAllBtn);
       copyRow.appendChild(feedbackSpan);
+      copyRow.appendChild(undoBtn);
       container.appendChild(copyRow);
     }
 
@@ -892,6 +971,46 @@
     }
 
     // =================== FILE PERSISTENCE ===================
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('classplanner', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+      });
+    }
+    async function saveHandleToDB(handle) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(handle, 'dirHandle');
+        tx.oncomplete = resolve; tx.onerror = reject;
+      });
+    }
+    async function loadHandleFromDB() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('handles', 'readonly');
+        const req = tx.objectStore('handles').get('dirHandle');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+      });
+    }
+    async function tryRestoreHandle() {
+      try {
+        const handle = await loadHandleFromDB();
+        if (!handle) return;
+        const perm = await handle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          dirHandle = handle;
+          document.getElementById('folderName').textContent = handle.name;
+          await loadConfig();
+          await loadWeek();
+        }
+      } catch (e) {
+        console.log('Kansion palautus epäonnistui:', e);
+      }
+    }
     async function selectFolder() {
       if (!window.showDirectoryPicker) {
         alert('Selaimesi ei tue kansionvalintaa (showDirectoryPicker). Käytä Chrome- tai Edge-selainta localhost-osoitteella.');
@@ -900,6 +1019,7 @@
       try {
         dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
         document.getElementById('folderName').textContent = dirHandle.name;
+        await saveHandleToDB(dirHandle);
         await loadConfig();
         await loadWeek();
       } catch (e) {
@@ -926,8 +1046,11 @@
       }
     }
 
-    async function loadWeek() {
-      if (!dirHandle) return;
+    async function loadWeek(showFeedback = false) {
+      if (!dirHandle) {
+        if (showFeedback) alert('Valitse ensin tallennuskansio (📁).');
+        return;
+      }
       const key = getWeekKey(currentWeekOffset);
       try {
         const fh = await dirHandle.getFileHandle(`viikko_${key}.json`);
@@ -935,9 +1058,21 @@
         const data = JSON.parse(await file.text());
         if (data.slots) weekData[key] = data.slots;
         renderGrid();
+        if (showFeedback) {
+          const btn = document.getElementById('loadBtn');
+          const orig = btn.textContent; btn.textContent = '\u2713 Ladattu';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        }
       } catch (e) {
-        if (e.name !== 'NotFoundError') console.error('Viikon lataus epäonnistui:', e);
-        // No file for this week – empty grid is correct
+        if (e.name === 'NotFoundError') {
+          if (showFeedback) {
+            const btn = document.getElementById('loadBtn');
+            const orig = btn.textContent; btn.textContent = 'Ei dataa t\u00e4lle viikolle';
+            setTimeout(() => { btn.textContent = orig; }, 2000);
+          }
+        } else {
+          console.error('Viikon lataus ep\u00e4onnistui:', e);
+        }
       }
     }
 
@@ -1002,7 +1137,7 @@
     document.getElementById('editToggle').addEventListener('click', toggleEditMode);
     document.getElementById('folderBtn').addEventListener('click', selectFolder);
     document.getElementById('saveBtn').addEventListener('click', saveWeek);
-    document.getElementById('loadBtn').addEventListener('click', loadWeek);
+    document.getElementById('loadBtn').addEventListener('click', () => loadWeek(true));
     document.getElementById('printBtn').addEventListener('click', () => window.print());
     document.getElementById('prevWeek').addEventListener('click', () => navigate(-1));
     document.getElementById('nextWeek').addEventListener('click', () => navigate(1));
@@ -1024,7 +1159,7 @@
       const key = getWeekKey(currentWeekOffset);
       const cell = ((weekData[key] || {})[DAYS[dayIdx]] || {})[String(slotIdx)];
       if (cell) { delete cell.startOverride; delete cell.endOverride; }
-      const t = computeDaySlotTime(dayIdx, slotIdx);
+      const t = computeCascadingSlotTime(dayIdx, slotIdx, key);
       document.getElementById('popupStartTime').value = minToTime(t.start);
       document.getElementById('popupEndTime').value = minToTime(t.end);
       document.getElementById('popupTimeRow').classList.remove('has-override');
@@ -1053,9 +1188,6 @@
       setTimeout(() => { fb.textContent = ''; }, 1500);
     });
 
-    document.getElementById('clearLunchBtn').addEventListener('click', () => {
-      document.getElementById('lunchStartInput').value = '';
-    });
     dayBreaks = defaultDayBreaks();
     registry = [];
     updateHeader();
@@ -1063,6 +1195,10 @@
     renderRegistry();
     renderRhythms();
     renderBreaksEditor();
+    document.getElementById('clearLunchBtn').addEventListener('click', () => {
+      document.getElementById('lunchStartInput').value = '';
+    });
+    tryRestoreHandle();
   </script>
 
 </body>
