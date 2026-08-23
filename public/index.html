@@ -46,6 +46,7 @@
     /* ---- GRID TABLE ---- */
     #grid {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       background: white;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -80,6 +81,8 @@
       padding: 5px 7px;
       cursor: pointer;
       transition: background 0.1s;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     .lesson-cell:hover { background: #eff6ff; }
     .lesson-cell.has-content { background: #fefce8; }
@@ -101,6 +104,7 @@
     }
     .break-lunch-btn:hover { background: #fef3c7; }
     .cell-lunch { font-size: 0.72em; color: #b45309; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .cell-supervision { font-size: 0.72em; color: #1d4ed8; background: #dbeafe; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .popup-lunch-row {
       display: flex; align-items: center; gap: 8px; padding: 8px 15px;
       border-top: 1px solid #e5e7eb; flex-shrink: 0; background: #fffbeb; flex-wrap: wrap;
@@ -191,6 +195,9 @@
 
     .reg-group { border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
     .reg-group-header { display: flex; align-items: center; gap: 8px; background: #f9fafb; padding: 6px 10px; }
+    .reorder-btn { background: none; border: 1px solid #d1d5db; border-radius: 3px; cursor: pointer; font-size: 0.75em; padding: 1px 5px; color: #6b7280; line-height: 1.4; }
+    .reorder-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .reorder-btn:disabled { opacity: 0.25; cursor: default; border-color: #e5e7eb; color: #d1d5db; }
     .group-name-input {
       border: none; background: transparent; font-weight: 600; font-size: 0.9em;
       flex: 1; outline: none; color: #1f2937;
@@ -286,6 +293,14 @@
     }
     .popup-member-btn:hover { border-color: #3b82f6; color: #3b82f6; }
     .popup-member-btn.selected { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .popup-selected-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .popup-selected-chip { padding: 3px 8px; border-radius: 4px; background: #3b82f6; color: white; border: none; cursor: pointer; font-size: 0.82em; display: flex; align-items: center; gap: 4px; }
+    .popup-selected-chip:hover { background: #2563eb; }
+    .popup-add-row { display: flex; gap: 5px; margin-bottom: 8px; }
+    .popup-add-input { flex: 1; border: 1px solid #d1d5db; border-radius: 4px; padding: 3px 8px; font-size: 0.82em; font-family: inherit; }
+    .popup-add-input:focus { outline: none; border-color: #3b82f6; }
+    .popup-add-btn { background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 3px 10px; cursor: pointer; font-size: 0.82em; }
+    .popup-add-btn:hover { background: #2563eb; }
     #popupText {
       padding: 12px 15px; border: none; outline: none;
       resize: vertical; min-height: 110px; font-size: 0.88em;
@@ -293,13 +308,41 @@
     }
 
     /* ---- PRINT ---- */
+    /* ---- NOTES & TODOS ---- */
+    #notesArea { max-width: 1400px; margin: 16px auto 0; padding: 0 16px 24px; }
+    .notes-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .notes-panel { flex: 1; min-width: 300px; background: white; border-radius: 6px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .todo-panel { width: 300px; background: white; border-radius: 6px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .notes-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600; font-size: 0.9em; color: #374151; }
+    .notes-header span { flex: 1; }
+    .notes-color-btns { display: flex; gap: 4px; }
+    .color-btn { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d1d5db; cursor: pointer; padding: 0; }
+    .color-btn:hover { border-color: #6b7280; }
+    #addNoteBtn, #addTodoBtn { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.8em; white-space: nowrap; }
+    #addNoteBtn:hover, #addTodoBtn:hover { background: #e5e7eb; }
+    #notesContainer { display: flex; flex-wrap: wrap; gap: 10px; }
+    .note-card { width: 160px; min-height: 120px; border-radius: 6px; padding: 8px; position: relative; box-shadow: 2px 2px 6px rgba(0,0,0,0.12); display: flex; flex-direction: column; }
+    .note-card textarea { flex: 1; border: none; background: transparent; resize: none; font-size: 0.82em; font-family: inherit; outline: none; line-height: 1.4; min-height: 90px; }
+    .note-del { position: absolute; top: 4px; right: 4px; background: none; border: none; cursor: pointer; font-size: 0.75em; color: #9ca3af; line-height: 1; padding: 2px 4px; border-radius: 3px; }
+    .note-del:hover { background: rgba(0,0,0,0.08); color: #374151; }
+    .todo-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-cb { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+    .todo-text { flex: 1; border: none; outline: none; font-size: 0.85em; font-family: inherit; background: transparent; }
+    .todo-text.done { text-decoration: line-through; color: #9ca3af; }
+    .todo-del { background: none; border: none; color: #d1d5db; cursor: pointer; font-size: 0.9em; padding: 0 2px; }
+    .todo-del:hover { color: #ef4444; }
+
     @media print {
       body { background: white; }
-      #toolbar, #registrySection, #rhythmsSection, #breaksSection, .popup-time-row { display: none !important; }
+      #toolbar, #registrySection, #rhythmsSection, #breaksSection, #notesArea, .popup-time-row { display: none !important; }
       .break-label { display: inline !important; }
+      @page { size: A4 landscape; margin: 8mm; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { margin: 0; padding: 0; }
       main { padding: 0; max-width: 100%; }
-      #grid { box-shadow: none; border-radius: 0; }
-      #grid th, #grid td { border: 1px solid #888; }
+      #grid { box-shadow: none; border-radius: 0; width: 100%; }
+      #grid th, #grid td { border: 1px solid #888; font-size: 11px; }
       .lesson-cell { cursor: default; }
       .lesson-cell.has-content { background: #fffde7 !important; -webkit-print-color-adjust: exact; }
       @page { size: A4 landscape; margin: 1.2cm; }
@@ -317,9 +360,11 @@
     </div>
     <div class="toolbar-right">
       <button id="folderBtn">📁 Valitse kansio</button>
+      <button id="restoreBtn" style="display:none">↩ Jatka: <span id="restoreName"></span></button>
       <span id="folderName">–</span>
       <button id="saveBtn">💾 Tallenna</button>
       <button id="loadBtn">📂 Avaa viikko</button>
+      <button id="templateBtn" title="Tallenna nykyinen viikko pohjana uusille viikoille">📋 Pohja</button>
       <button id="printBtn">🖨️ Tulosta</button>
       <button id="editToggle">✏️ Muokkaa rakennetta</button>
     </div>
@@ -351,6 +396,31 @@
       <h2>Välitauot</h2>
       <div id="breaksGroups"></div>
     </section>
+
+    <div id="notesArea">
+      <div class="notes-row">
+        <div class="notes-panel">
+          <div class="notes-header">
+            <span>📌 Muistiinpanot</span>
+            <div class="notes-color-btns">
+              <button class="color-btn" data-color="#fef9c3" style="background:#fef9c3"></button>
+              <button class="color-btn" data-color="#fce7f3" style="background:#fce7f3"></button>
+              <button class="color-btn" data-color="#dbeafe" style="background:#dbeafe"></button>
+              <button class="color-btn" data-color="#dcfce7" style="background:#dcfce7"></button>
+            </div>
+            <button id="addNoteBtn">+ Uusi lappu</button>
+          </div>
+          <div id="notesContainer"></div>
+        </div>
+        <div class="todo-panel">
+          <div class="notes-header">
+            <span>✅ Tehtävälista</span>
+            <button id="addTodoBtn">+ Uusi</button>
+          </div>
+          <div id="todosContainer"></div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <div id="popupOverlay">
@@ -394,6 +464,10 @@
         </select>
         <button id="clearLunchBtn">Poista</button>
       </div>
+      <div class="popup-lunch-row">
+        <button id="supervisionBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🏃 Välkkävalvonta</button>
+        <button id="clearCellBtn" style="margin-left:auto;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
+      </div>
     </div>
   </div>
 
@@ -412,10 +486,8 @@
     let popupState = null;    // {dayIdx, slotIdx} or null
     let popupParticipants = [];
     let rhythms = [
-      { name: 'A', startMinutes: 480 },
+      { name: 'A', startMinutes: 505 },
       { name: 'B', startMinutes: 510 },
-      { name: 'C', startMinutes: 540 },
-      { name: 'D', startMinutes: 570 },
     ];
     let dayRhythms = [0, 0, 0, 0, 0];
     let undoState = null;  // {weekKey, affected:[{dayIdx, breaks, rhythm, cells}]}
@@ -505,6 +577,23 @@
         const th = document.createElement('th');
         if (!isEdit) {
           th.textContent = `${DAY_FULL[d]} (${rhythms[dayRhythms[d]].name || '?'})`;
+          const capD = d;
+          const clrBtn = document.createElement('button');
+          clrBtn.textContent = '🗑';
+          clrBtn.title = 'Tyhjennä koko päivä';
+          clrBtn.style.cssText = 'margin-left:6px;background:none;border:none;cursor:pointer;opacity:0.45;font-size:0.85em;vertical-align:middle;';
+          clrBtn.addEventListener('mouseover', () => clrBtn.style.opacity = '1');
+          clrBtn.addEventListener('mouseout', () => clrBtn.style.opacity = '0.45');
+          clrBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!confirm(`Tyhjennetäänkö kaikki ${DAY_FULL[capD]}-sarakkeen solut?`)) return;
+            const key = getWeekKey(currentWeekOffset);
+            if (!weekData[key]) weekData[key] = {};
+            weekData[key][DAYS[capD]] = {};
+            dirty = true; renderGrid();
+          });
+          th.appendChild(clrBtn);
         } else {
           const span = document.createElement('span');
           span.textContent = DAY_FULL[d];
@@ -587,6 +676,13 @@
             td.appendChild(lDiv);
           }
 
+          if (cell && cell.breakSupervision) {
+            const sDiv = document.createElement('div');
+            sDiv.className = 'cell-supervision';
+            sDiv.textContent = '🏃 Välkkävalvonta';
+            td.appendChild(sDiv);
+          }
+
           td.addEventListener('click', () => openPopup(d, curLi));
           tr.appendChild(td);
         }
@@ -623,6 +719,12 @@
       document.getElementById('popupText').value = cell.text || '';
       document.getElementById('lunchStartInput').value = cell.lunchStart != null ? minToTime(cell.lunchStart) : '';
       document.getElementById('lunchDuration').value = String(cell.lunchDuration || 15);
+      const supBtn = document.getElementById('supervisionBtn');
+      supBtn.style.background = cell.breakSupervision ? '#dbeafe' : 'white';
+      supBtn.style.borderColor = cell.breakSupervision ? '#3b82f6' : '#d1d5db';
+      supBtn.style.color = cell.breakSupervision ? '#1d4ed8' : '';
+      supBtn.style.fontWeight = cell.breakSupervision ? '600' : '';
+      supBtn.dataset.active = cell.breakSupervision ? '1' : '0';
       renderPopupParticipants();
       document.getElementById('popupOverlay').classList.add('open');
       document.getElementById('popupText').focus();
@@ -651,6 +753,7 @@
         slotData.lunchStart = parseInt(lp[0]) * 60 + parseInt(lp[1]);
         slotData.lunchDuration = parseInt(document.getElementById('lunchDuration').value);
       }
+      if (document.getElementById('supervisionBtn').dataset.active === '1') slotData.breakSupervision = true;
       weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
       dirty = true;
       popupState = null;
@@ -662,10 +765,55 @@
     function renderPopupParticipants() {
       const container = document.getElementById('popupParticipants');
       container.innerHTML = '';
+
+      // Selected participants as removable chips
+      if (popupParticipants.length) {
+        const row = document.createElement('div');
+        row.className = 'popup-selected-row';
+        for (const m of [...popupParticipants]) {
+          const chip = document.createElement('button');
+          chip.className = 'popup-selected-chip';
+          chip.textContent = m + ' ✕';
+          const capM = m;
+          chip.addEventListener('click', () => {
+            const idx = popupParticipants.indexOf(capM);
+            if (idx >= 0) popupParticipants.splice(idx, 1);
+            renderPopupParticipants();
+          });
+          row.appendChild(chip);
+        }
+        container.appendChild(row);
+      }
+
+      // Free-text add row
+      const addRow = document.createElement('div');
+      addRow.className = 'popup-add-row';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'popup-add-input';
+      input.placeholder = 'Lisää osallistuja...';
+      const addBtn = document.createElement('button');
+      addBtn.className = 'popup-add-btn';
+      addBtn.textContent = '+';
+      const doAdd = () => {
+        const val = input.value.trim();
+        if (val && !popupParticipants.includes(val)) {
+          popupParticipants.push(val);
+          renderPopupParticipants();
+        } else {
+          input.value = '';
+        }
+      };
+      addBtn.addEventListener('click', doAdd);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+      addRow.appendChild(input);
+      addRow.appendChild(addBtn);
+      container.appendChild(addRow);
+
       if (!registry.length) {
         const em = document.createElement('em');
-        em.style.cssText = 'color:#9ca3af;font-size:0.85em';
-        em.textContent = 'Ei ryhmiä. Lisää osallistujia muokkaustilassa.';
+        em.style.cssText = 'color:#9ca3af;font-size:0.82em';
+        em.textContent = 'Rekisteri tyhjä – lisää ryhmiä muokkaustilassa.';
         container.appendChild(em);
         return;
       }
@@ -736,6 +884,27 @@
         delG.title = 'Poista ryhmä';
         delG.textContent = '🗑';
         delG.addEventListener('click', () => { registry.splice(gi, 1); renderRegistry(); });
+
+        const upBtn = document.createElement('button');
+        upBtn.className = 'reorder-btn';
+        upBtn.textContent = '↑';
+        upBtn.disabled = gi === 0;
+        upBtn.addEventListener('click', () => {
+          [registry[gi - 1], registry[gi]] = [registry[gi], registry[gi - 1]];
+          renderRegistry();
+        });
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'reorder-btn';
+        downBtn.textContent = '↓';
+        downBtn.disabled = gi === registry.length - 1;
+        downBtn.addEventListener('click', () => {
+          [registry[gi], registry[gi + 1]] = [registry[gi + 1], registry[gi]];
+          renderRegistry();
+        });
+
+        ghdr.appendChild(upBtn);
+        ghdr.appendChild(downBtn);
         ghdr.appendChild(delG);
         gdiv.appendChild(ghdr);
 
@@ -997,6 +1166,7 @@
       });
     }
     async function tryRestoreHandle() {
+      const btn = document.getElementById('restoreBtn');
       try {
         const handle = await loadHandleFromDB();
         if (!handle) return;
@@ -1004,11 +1174,26 @@
         if (perm === 'granted') {
           dirHandle = handle;
           document.getElementById('folderName').textContent = handle.name;
+          btn.style.display = 'none';
           await loadConfig();
           await loadWeek();
+        } else {
+          btn.style.display = 'none';
         }
       } catch (e) {
         console.log('Kansion palautus epäonnistui:', e);
+        btn.style.display = 'none';
+      }
+    }
+    async function checkForStoredHandle() {
+      try {
+        const handle = await loadHandleFromDB();
+        if (!handle) return;
+        const btn = document.getElementById('restoreBtn');
+        document.getElementById('restoreName').textContent = handle.name;
+        btn.style.display = '';
+      } catch (e) {
+        // IndexedDB unavailable, silently ignore
       }
     }
     async function selectFolder() {
@@ -1027,6 +1212,28 @@
       }
     }
 
+    async function saveTemplate() {
+      if (!dirHandle) { alert('Valitse ensin tallennuskansio (📁).'); return; }
+      const key = getWeekKey(currentWeekOffset);
+      const slots = (weekData[key] || {});
+      try {
+        const fh = await dirHandle.getFileHandle('template.json', { create: true });
+        const w = await fh.createWritable();
+        await w.write(JSON.stringify({ slots }, null, 2));
+        await w.close();
+        const btn = document.getElementById('templateBtn');
+        const orig = btn.textContent; btn.textContent = '✓ Pohja tallennettu';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      } catch (e) { alert('Pohjan tallennus epäonnistui: ' + e.message); }
+    }
+    async function applyTemplate(key) {
+      if (!dirHandle) return;
+      try {
+        const fh = await dirHandle.getFileHandle('template.json');
+        const data = JSON.parse(await (await fh.getFile()).text());
+        if (data.slots) { weekData[key] = data.slots; renderGrid(); }
+      } catch (e) { /* ei pohja-tiedostoa, ei hätää */ }
+    }
     async function saveWeek() {
       if (!dirHandle) { alert('Valitse ensin tallennuskansio (📁).'); return; }
       const key = getWeekKey(currentWeekOffset);
@@ -1067,9 +1274,10 @@
         if (e.name === 'NotFoundError') {
           if (showFeedback) {
             const btn = document.getElementById('loadBtn');
-            const orig = btn.textContent; btn.textContent = 'Ei dataa t\u00e4lle viikolle';
+            const orig = btn.textContent; btn.textContent = 'Ei dataa tälle viikolle';
             setTimeout(() => { btn.textContent = orig; }, 2000);
           }
+          await applyTemplate(key);
         } else {
           console.error('Viikon lataus ep\u00e4onnistui:', e);
         }
@@ -1128,6 +1336,65 @@
       if (dirHandle) await loadWeek();
     }
 
+    // =================== NOTES & TODOS ===================
+    let notes = JSON.parse(localStorage.getItem('cp_notes') || '[]');
+    let todos = JSON.parse(localStorage.getItem('cp_todos') || '[]');
+    let activeNoteColor = '#fef9c3';
+
+    function saveNotes() { localStorage.setItem('cp_notes', JSON.stringify(notes)); }
+    function saveTodos() { localStorage.setItem('cp_todos', JSON.stringify(todos)); }
+
+    function renderNotes() {
+      const c = document.getElementById('notesContainer');
+      c.innerHTML = '';
+      notes.forEach((n, i) => {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        card.style.background = n.color || '#fef9c3';
+        const ta = document.createElement('textarea');
+        ta.value = n.text;
+        ta.placeholder = 'Kirjoita muistiinpano...';
+        ta.addEventListener('input', () => { notes[i].text = ta.value; saveNotes(); });
+        const del = document.createElement('button');
+        del.className = 'note-del'; del.textContent = '✕';
+        del.addEventListener('click', () => { notes.splice(i, 1); saveNotes(); renderNotes(); });
+        card.appendChild(del); card.appendChild(ta);
+        c.appendChild(card);
+      });
+    }
+
+    function renderTodos() {
+      const c = document.getElementById('todosContainer');
+      c.innerHTML = '';
+      todos.forEach((t, i) => {
+        const row = document.createElement('div');
+        row.className = 'todo-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'todo-cb'; cb.checked = t.done;
+        cb.addEventListener('change', () => { todos[i].done = cb.checked; inp.classList.toggle('done', cb.checked); saveTodos(); });
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.className = 'todo-text' + (t.done ? ' done' : '');
+        inp.value = t.text; inp.placeholder = 'Tehtävä...';
+        inp.addEventListener('input', () => { todos[i].text = inp.value; saveTodos(); });
+        const del = document.createElement('button');
+        del.className = 'todo-del'; del.textContent = '✕';
+        del.addEventListener('click', () => { todos.splice(i, 1); saveTodos(); renderTodos(); });
+        row.appendChild(cb); row.appendChild(inp); row.appendChild(del);
+        c.appendChild(row);
+      });
+    }
+
+    document.getElementById('addNoteBtn').addEventListener('click', () => {
+      notes.push({ text: '', color: activeNoteColor }); saveNotes(); renderNotes();
+    });
+    document.getElementById('addTodoBtn').addEventListener('click', () => {
+      todos.push({ text: '', done: false }); saveTodos(); renderTodos();
+    });
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => { activeNoteColor = btn.dataset.color; });
+    });
+    renderNotes(); renderTodos();
+
     // =================== UNSAVED CHANGES GUARD ===================
     window.addEventListener('beforeunload', e => {
       if (dirty) { e.preventDefault(); e.returnValue = ''; }
@@ -1136,6 +1403,8 @@
     // =================== EVENT WIRING ===================
     document.getElementById('editToggle').addEventListener('click', toggleEditMode);
     document.getElementById('folderBtn').addEventListener('click', selectFolder);
+    document.getElementById('restoreBtn').addEventListener('click', tryRestoreHandle);
+    document.getElementById('templateBtn').addEventListener('click', saveTemplate);
     document.getElementById('saveBtn').addEventListener('click', saveWeek);
     document.getElementById('loadBtn').addEventListener('click', () => loadWeek(true));
     document.getElementById('printBtn').addEventListener('click', () => window.print());
@@ -1198,7 +1467,34 @@
     document.getElementById('clearLunchBtn').addEventListener('click', () => {
       document.getElementById('lunchStartInput').value = '';
     });
-    tryRestoreHandle();
+    document.getElementById('supervisionBtn').addEventListener('click', () => {
+      const btn = document.getElementById('supervisionBtn');
+      const active = btn.dataset.active !== '1';
+      btn.dataset.active = active ? '1' : '0';
+      btn.style.background = active ? '#dbeafe' : 'white';
+      btn.style.borderColor = active ? '#3b82f6' : '#d1d5db';
+      btn.style.color = active ? '#1d4ed8' : '';
+      btn.style.fontWeight = active ? '600' : '';
+    });
+    document.getElementById('clearCellBtn').addEventListener('click', () => {
+      if (!popupState) return;
+      popupParticipants = [];
+      document.getElementById('popupText').value = '';
+      document.getElementById('lunchStartInput').value = '';
+      const supBtn = document.getElementById('supervisionBtn');
+      supBtn.dataset.active = '0';
+      supBtn.style.background = 'white'; supBtn.style.borderColor = '#d1d5db';
+      supBtn.style.color = ''; supBtn.style.fontWeight = '';
+      const timeRow = document.getElementById('popupTimeRow');
+      timeRow.classList.remove('has-override');
+      const { dayIdx, slotIdx } = popupState;
+      const key = getWeekKey(currentWeekOffset);
+      if (weekData[key]?.[DAYS[dayIdx]]) delete weekData[key][DAYS[dayIdx]][String(slotIdx)];
+      dirty = true;
+      renderPopupParticipants();
+      renderGrid();
+    });
+    checkForStoredHandle();
   </script>
 
 </body>

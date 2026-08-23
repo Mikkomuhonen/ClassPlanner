@@ -7,7 +7,7 @@ Manages named daily rhythm profiles that each define a lesson start time, enabli
 ## Requirements
 
 ### Requirement: Rhythm management
-The system SHALL allow the teacher to create, rename, and delete named daily rhythm profiles in edit mode. Each rhythm SHALL have a name (e.g., "A", "B") and a configurable start time. At least one rhythm SHALL always exist. The system SHALL initialise with four default rhythms (A 08:00, B 08:30, C 09:00, D 09:30) on first use.
+The system SHALL allow the teacher to create, rename, and delete named daily rhythm profiles in edit mode. Each rhythm SHALL have a name (e.g., "A", "B") and a configurable start time. At least one rhythm SHALL always exist. The system SHALL initialise with two default rhythms (A 08:25, B 08:30) on first use.
 
 #### Scenario: Create a new rhythm
 - **WHEN** the user activates the add rhythm control in edit mode
