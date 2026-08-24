@@ -4,7 +4,7 @@
   "description": "Class Planner - Week Schedule Management",
   "main": "src/index.js",
   "scripts": {
-    "start": "npx serve public",
+    "start": "npx serve docs",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "keywords": [

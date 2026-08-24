@@ -318,8 +318,10 @@
     .notes-color-btns { display: flex; gap: 4px; }
     .color-btn { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d1d5db; cursor: pointer; padding: 0; }
     .color-btn:hover { border-color: #6b7280; }
-    #addNoteBtn, #addTodoBtn { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.8em; white-space: nowrap; }
-    #addNoteBtn:hover, #addTodoBtn:hover { background: #e5e7eb; }
+    #addNoteBtn, #addTodoBtn, #clearNotesBtn, #clearTodosBtn { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.8em; white-space: nowrap; }
+    #addNoteBtn:hover, #addTodoBtn:hover, #clearNotesBtn:hover, #clearTodosBtn:hover { background: #e5e7eb; }
+    .notes-undo-btn { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.8em; white-space: nowrap; color: #92400e; }
+    .notes-undo-btn:hover { background: #fef3c7; }
     #notesContainer { display: flex; flex-wrap: wrap; gap: 10px; }
     .note-card { width: 160px; min-height: 120px; border-radius: 6px; padding: 8px; position: relative; box-shadow: 2px 2px 6px rgba(0,0,0,0.12); display: flex; flex-direction: column; }
     .note-card textarea { flex: 1; border: none; background: transparent; resize: none; font-size: 0.82em; font-family: inherit; outline: none; line-height: 1.4; min-height: 90px; }
@@ -333,9 +335,49 @@
     .todo-del { background: none; border: none; color: #d1d5db; cursor: pointer; font-size: 0.9em; padding: 0 2px; }
     .todo-del:hover { color: #ef4444; }
 
+    /* ---- SUBJECTS SECTION ---- */
+    #subjectsSection {
+      display: none;
+      margin-top: 18px;
+      background: white;
+      border-radius: 6px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    body.edit-mode #subjectsSection { display: block; }
+    #subjectsSection h2 { font-size: 0.95em; font-weight: 600; margin-bottom: 12px; color: #374151; }
+    .subject-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .subject-code-input { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 8px; width: 70px; font-size: 0.9em; font-weight: 600; outline: none; }
+    .subject-code-input:focus { border-color: #3b82f6; }
+    .subject-name-input { border: 1px solid #e5e7eb; border-radius: 4px; padding: 3px 8px; flex: 1; min-width: 120px; font-size: 0.9em; outline: none; }
+    .subject-name-input:focus { border-color: #3b82f6; }
+    .subject-color-input { width: 32px; height: 28px; border: 1px solid #e5e7eb; border-radius: 4px; padding: 1px; cursor: pointer; }
+    #addSubjectBtn { background: none; border: 1px dashed #9ca3af; color: #6b7280; border-radius: 4px; cursor: pointer; padding: 3px 8px; font-size: 0.78em; margin-top: 4px; }
+    #addSubjectBtn:hover { border-color: #3b82f6; color: #3b82f6; }
+    #subjectAddError { font-size: 0.78em; color: #dc2626; margin-top: 4px; min-height: 1em; }
+    .cell-subjects { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 3px; align-items: center; }
+    .cell-subject-badge { font-size: 0.82em; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: white; display: inline-block; line-height: 1.5; }
+    #popupSubjects { padding: 10px 15px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+    .popup-subjects-label { font-size: 0.78em; color: #6b7280; margin-bottom: 5px; }
+    .popup-subjects-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+    .popup-subject-chip { padding: 3px 8px; border-radius: 4px; color: white; border: none; cursor: pointer; font-size: 0.85em; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .popup-subject-chip:hover { opacity: 0.85; }
+    .popup-subjects-registry { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+    .popup-subject-btn { padding: 3px 10px; border-radius: 4px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-size: 0.82em; font-weight: 600; transition: all 0.1s; }
+    .popup-subject-btn:hover { border-color: #3b82f6; }
+    .popup-subject-btn.selected { color: white; border-color: transparent; }
+
+    .note-print-text { display: none; font-size: 0.82em; font-family: inherit; line-height: 1.4; white-space: pre-wrap; }
+
     @media print {
       body { background: white; }
-      #toolbar, #registrySection, #rhythmsSection, #breaksSection, #notesArea, .popup-time-row { display: none !important; }
+      #toolbar, #registrySection, #rhythmsSection, #breaksSection, #subjectsSection, .popup-time-row { display: none !important; }
+      body:not(.print-has-notes) #notesArea { display: none !important; }
+      body.print-has-notes #notesArea { display: block; }
+      #notesArea { page-break-before: always; padding: 0 16px 24px; }
+      .note-del, #addNoteBtn, .notes-color-btns, #addTodoBtn, .todo-del, #clearNotesBtn, #clearTodosBtn, .notes-undo-btn { display: none !important; }
+      .note-card textarea { display: none !important; }
+      .note-print-text { display: block; }
       .break-label { display: inline !important; }
       @page { size: A4 landscape; margin: 8mm; }
       html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -386,6 +428,16 @@
       <button id="addGroupBtn">+ Uusi ryhmä</button>
     </section>
 
+    <section id="subjectsSection">
+      <h2>Oppiaineet</h2>
+      <div id="subjectsGroups"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+        <input id="subjectAddCode" type="text" placeholder="KOO" maxlength="10" class="subject-code-input" style="width:70px;">
+        <button id="addSubjectBtn">+ Lisää oppiaine</button>
+        <span id="subjectAddError"></span>
+      </div>
+    </section>
+
     <section id="rhythmsSection">
       <h2>Päivärytmit</h2>
       <div id="rhythmsGroups"></div>
@@ -409,6 +461,7 @@
               <button class="color-btn" data-color="#dcfce7" style="background:#dcfce7"></button>
             </div>
             <button id="addNoteBtn">+ Uusi lappu</button>
+            <button id="clearNotesBtn">🗑 Tyhjennä</button>
           </div>
           <div id="notesContainer"></div>
         </div>
@@ -416,6 +469,7 @@
           <div class="notes-header">
             <span>✅ Tehtävälista</span>
             <button id="addTodoBtn">+ Uusi</button>
+            <button id="clearTodosBtn">🗑 Tyhjennä</button>
           </div>
           <div id="todosContainer"></div>
         </div>
@@ -429,7 +483,6 @@
         <span id="popupTitle"></span>
         <button id="popupClose">✕</button>
       </div>
-      <div id="popupParticipants"></div>
       <div class="popup-time-row" id="popupTimeRow">
         <label>Alku</label>
         <input type="time" id="popupStartTime" class="popup-time-input">
@@ -437,6 +490,8 @@
         <input type="time" id="popupEndTime" class="popup-time-input">
         <button id="popupResetTime">↺ Oletusaika</button>
       </div>
+      <div id="popupSubjects"></div>
+      <div id="popupParticipants"></div>
       <textarea id="popupText" placeholder="Tunnin sisältö..."></textarea>
       <div class="popup-copy-row">
         <label>Kopioi tunti →</label>
@@ -485,12 +540,25 @@
     let dirty = false;
     let popupState = null;    // {dayIdx, slotIdx} or null
     let popupParticipants = [];
+    let subjects = [];            // [{code, name, color}]
+    let popupSubjects = [];       // codes selected in current popup
     let rhythms = [
       { name: 'A', startMinutes: 505 },
       { name: 'B', startMinutes: 510 },
     ];
     let dayRhythms = [0, 0, 0, 0, 0];
     let undoState = null;  // {weekKey, affected:[{dayIdx, breaks, rhythm, cells}]}
+
+    // =================== SUBJECTS ===================
+    function loadSubjects() {
+      try { subjects = JSON.parse(localStorage.getItem('cp_subjects') || '[]'); } catch(e) { subjects = []; }
+    }
+    function saveSubjects() {
+      localStorage.setItem('cp_subjects', JSON.stringify(subjects));
+    }
+    function normalizeCode(s) {
+      return s.trim().toUpperCase();
+    }
 
     // =================== TIME UTILS ===================
     function minToTime(m) {
@@ -645,7 +713,21 @@
           td.appendChild(timeDiv);
 
           const cell = (dayData[DAYS[d]] || {})[String(curLi)];
-          if (cell && (cell.participants?.length || cell.text)) {
+          if (cell && cell.subjects?.length) {
+            const subRow = document.createElement('div');
+            subRow.className = 'cell-subjects';
+            for (const code of cell.subjects) {
+              const s = subjects.find(x => x.code === code);
+              const badge = document.createElement('span');
+              badge.className = 'cell-subject-badge';
+              badge.style.background = s ? s.color : '#9ca3af';
+              badge.textContent = code;
+              subRow.appendChild(badge);
+            }
+            td.appendChild(subRow);
+          }
+
+          if (cell && (cell.participants?.length || cell.text || cell.subjects?.length)) {
             td.classList.add('has-content');
             if (cell.participants?.length) {
               const pDiv = document.createElement('div');
@@ -705,6 +787,7 @@
       const key = getWeekKey(currentWeekOffset);
       const cell = ((weekData[key] || {})[DAYS[dayIdx]] || {})[String(slotIdx)] || { participants: [], text: '' };
       popupParticipants = [...(cell.participants || [])];
+      popupSubjects = [...(cell.subjects || [])];
 
       const t = getCellTime(dayIdx, slotIdx, key);
       document.getElementById('popupTitle').textContent =
@@ -726,6 +809,7 @@
       supBtn.style.fontWeight = cell.breakSupervision ? '600' : '';
       supBtn.dataset.active = cell.breakSupervision ? '1' : '0';
       renderPopupParticipants();
+      renderPopupSubjects();
       document.getElementById('popupOverlay').classList.add('open');
       document.getElementById('popupText').focus();
     }
@@ -745,7 +829,7 @@
 
       if (!weekData[key]) weekData[key] = {};
       if (!weekData[key][DAYS[dayIdx]]) weekData[key][DAYS[dayIdx]] = {};
-      const slotData = { participants: [...popupParticipants], text };
+      const slotData = { participants: [...popupParticipants], text, subjects: [...popupSubjects] };
       if (hasOverride) { slotData.startOverride = startMin; slotData.endOverride = endMin; }
       const lunchVal = document.getElementById('lunchStartInput').value;
       if (lunchVal) {
@@ -758,6 +842,7 @@
       dirty = true;
       popupState = null;
       popupParticipants = [];
+      popupSubjects = [];
       document.getElementById('popupOverlay').classList.remove('open');
       renderGrid();
     }
@@ -993,6 +1078,158 @@
       });
     }
 
+    // =================== SUBJECTS RENDER ===================
+    function renderSubjectsSection() {
+      const container = document.getElementById('subjectsGroups');
+      container.innerHTML = '';
+      subjects.forEach((s, si) => {
+        const row = document.createElement('div');
+        row.className = 'subject-row';
+
+        const codeIn = document.createElement('input');
+        codeIn.className = 'subject-code-input';
+        codeIn.value = s.code;
+        codeIn.placeholder = 'KOO';
+        codeIn.maxLength = 10;
+        codeIn.addEventListener('change', () => {
+          const normalized = normalizeCode(codeIn.value);
+          if (!normalized) { codeIn.value = s.code; return; }
+          if (subjects.some((x, xi) => xi !== si && x.code === normalized)) {
+            codeIn.style.borderColor = '#dc2626'; codeIn.value = s.code;
+            setTimeout(() => { codeIn.style.borderColor = ''; }, 1500);
+            return;
+          }
+          const oldCode = s.code;
+          for (const wk of Object.keys(weekData)) {
+            for (const day of Object.keys(weekData[wk])) {
+              for (const slot of Object.keys(weekData[wk][day])) {
+                const cell = weekData[wk][day][slot];
+                if (Array.isArray(cell.subjects)) cell.subjects = cell.subjects.map(c => c === oldCode ? normalized : c);
+              }
+            }
+          }
+          s.code = normalized; codeIn.value = normalized;
+          saveSubjects(); renderGrid();
+        });
+        row.appendChild(codeIn);
+
+        const nameIn = document.createElement('input');
+        nameIn.className = 'subject-name-input';
+        nameIn.value = s.name;
+        nameIn.placeholder = 'Aineen nimi';
+        nameIn.addEventListener('input', () => { s.name = nameIn.value; saveSubjects(); });
+        row.appendChild(nameIn);
+
+        const colorIn = document.createElement('input');
+        colorIn.type = 'color';
+        colorIn.className = 'subject-color-input';
+        colorIn.value = s.color;
+        colorIn.addEventListener('input', () => { s.color = colorIn.value; saveSubjects(); renderGrid(); });
+        row.appendChild(colorIn);
+
+        const upBtn = document.createElement('button');
+        upBtn.className = 'reorder-btn'; upBtn.textContent = '↑'; upBtn.disabled = si === 0;
+        upBtn.addEventListener('click', () => {
+          [subjects[si - 1], subjects[si]] = [subjects[si], subjects[si - 1]];
+          saveSubjects(); renderSubjectsSection();
+        });
+        row.appendChild(upBtn);
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'reorder-btn'; downBtn.textContent = '↓'; downBtn.disabled = si === subjects.length - 1;
+        downBtn.addEventListener('click', () => {
+          [subjects[si], subjects[si + 1]] = [subjects[si + 1], subjects[si]];
+          saveSubjects(); renderSubjectsSection();
+        });
+        row.appendChild(downBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del-btn'; delBtn.textContent = '🗑';
+        delBtn.addEventListener('click', () => {
+          subjects.splice(si, 1);
+          saveSubjects(); renderSubjectsSection(); renderGrid();
+        });
+        row.appendChild(delBtn);
+
+        container.appendChild(row);
+      });
+    }
+
+    function renderPopupSubjects() {
+      const container = document.getElementById('popupSubjects');
+      container.innerHTML = '';
+
+      const lbl = document.createElement('div');
+      lbl.className = 'popup-subjects-label';
+      lbl.textContent = 'Oppiaine';
+      container.appendChild(lbl);
+
+      if (popupSubjects.length) {
+        const chipsRow = document.createElement('div');
+        chipsRow.className = 'popup-subjects-chips';
+        for (const code of [...popupSubjects]) {
+          const s = subjects.find(x => x.code === code);
+          const chip = document.createElement('button');
+          chip.className = 'popup-subject-chip';
+          chip.style.background = s ? s.color : '#9ca3af';
+          chip.textContent = code + ' ✕';
+          const capCode = code;
+          chip.addEventListener('click', () => {
+            const idx = popupSubjects.indexOf(capCode);
+            if (idx >= 0) popupSubjects.splice(idx, 1);
+            renderPopupSubjects();
+          });
+          chipsRow.appendChild(chip);
+        }
+        container.appendChild(chipsRow);
+      }
+
+      if (subjects.length) {
+        const regRow = document.createElement('div');
+        regRow.className = 'popup-subjects-registry';
+        for (const s of subjects) {
+          const btn = document.createElement('button');
+          const selected = popupSubjects.includes(s.code);
+          btn.className = 'popup-subject-btn' + (selected ? ' selected' : '');
+          if (selected) btn.style.background = s.color;
+          btn.textContent = s.code;
+          btn.title = s.name || s.code;
+          const capCode = s.code;
+          btn.addEventListener('click', () => {
+            const idx = popupSubjects.indexOf(capCode);
+            if (idx >= 0) popupSubjects.splice(idx, 1);
+            else popupSubjects.push(capCode);
+            renderPopupSubjects();
+          });
+          regRow.appendChild(btn);
+        }
+        container.appendChild(regRow);
+      }
+
+      const addRow = document.createElement('div');
+      addRow.className = 'popup-add-row';
+      const input = document.createElement('input');
+      input.type = 'text'; input.className = 'popup-add-input';
+      input.placeholder = 'Uusi tunnus...'; input.maxLength = 10;
+      const addBtn = document.createElement('button');
+      addBtn.className = 'popup-add-btn'; addBtn.textContent = '+';
+      const doAdd = () => {
+        const val = normalizeCode(input.value);
+        if (!val) return;
+        if (!subjects.find(x => x.code === val)) {
+          subjects.push({ code: val, name: '', color: '#9ca3af' });
+          saveSubjects();
+        }
+        if (!popupSubjects.includes(val)) popupSubjects.push(val);
+        input.value = '';
+        renderPopupSubjects();
+      };
+      addBtn.addEventListener('click', doAdd);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+      addRow.appendChild(input); addRow.appendChild(addBtn);
+      container.appendChild(addRow);
+    }
+
     // =================== BREAKS EDITOR ===================
     function performCopy(src, targets) {
       const key = getWeekKey(currentWeekOffset);
@@ -1134,7 +1371,7 @@
     async function toggleEditMode() {
       const isEdit = document.body.classList.toggle('edit-mode');
       document.getElementById('editToggle').textContent = isEdit ? '✓ Valmis' : '✏️ Muokkaa rakennetta';
-      if (isEdit) { renderRhythms(); renderBreaksEditor(); }
+      if (isEdit) { renderRhythms(); renderBreaksEditor(); renderSubjectsSection(); }
       renderGrid();
       if (!isEdit) await saveConfig();
     }
@@ -1240,7 +1477,7 @@
       try {
         const fh = await dirHandle.getFileHandle(`viikko_${key}.json`, { create: true });
         const w = await fh.createWritable();
-        await w.write(JSON.stringify({ weekKey: key, slots: weekData[key] || {} }, null, 2));
+        await w.write(JSON.stringify({ weekKey: key, slots: weekData[key] || {}, notes: weekData[key]?.notes || [], todos: weekData[key]?.todos || [] }, null, 2));
         await w.close();
         dirty = false;
         // Brief visual feedback without alert
@@ -1264,6 +1501,10 @@
         const file = await fh.getFile();
         const data = JSON.parse(await file.text());
         if (data.slots) weekData[key] = data.slots;
+        if (Array.isArray(data.notes)) weekData[key].notes = data.notes;
+        if (Array.isArray(data.todos)) weekData[key].todos = data.todos;
+        loadNotesFromWeek(key);
+        renderNotes(); renderTodos();
         renderGrid();
         if (showFeedback) {
           const btn = document.getElementById('loadBtn');
@@ -1327,6 +1568,15 @@
     }
 
     // =================== WEEK NAVIGATION ===================
+    function loadNotesFromWeek(key) {
+      undoNotes = null; undoTodos = null;
+      if (!weekData[key]) weekData[key] = {};
+      if (!weekData[key].notes) weekData[key].notes = [];
+      if (!weekData[key].todos) weekData[key].todos = [];
+      notes = weekData[key].notes;
+      todos = weekData[key].todos;
+    }
+
     async function navigate(delta) {
       if (dirty && !confirm('Viikolla on tallentamattomia muutoksia. Vaihdetaanko silti?')) return;
       currentWeekOffset += delta;
@@ -1334,15 +1584,21 @@
       updateHeader();
       renderGrid();
       if (dirHandle) await loadWeek();
+      else {
+        loadNotesFromWeek(getWeekKey(currentWeekOffset));
+        renderNotes(); renderTodos();
+      }
     }
 
     // =================== NOTES & TODOS ===================
-    let notes = JSON.parse(localStorage.getItem('cp_notes') || '[]');
-    let todos = JSON.parse(localStorage.getItem('cp_todos') || '[]');
+    let notes = [];
+    let todos = [];
+    let undoNotes = null;
+    let undoTodos = null;
     let activeNoteColor = '#fef9c3';
 
-    function saveNotes() { localStorage.setItem('cp_notes', JSON.stringify(notes)); }
-    function saveTodos() { localStorage.setItem('cp_todos', JSON.stringify(todos)); }
+    function saveNotes() { dirty = true; }
+    function saveTodos() { dirty = true; }
 
     function renderNotes() {
       const c = document.getElementById('notesContainer');
@@ -1390,6 +1646,38 @@
     document.getElementById('addTodoBtn').addEventListener('click', () => {
       todos.push({ text: '', done: false }); saveTodos(); renderTodos();
     });
+    document.getElementById('clearNotesBtn').addEventListener('click', () => {
+      if (!confirm('Tyhjennetäänkö kaikki muistiinpanot?')) return;
+      undoNotes = notes.map(n => ({ ...n }));
+      notes.length = 0;
+      saveNotes(); renderNotes();
+      const header = document.querySelector('.notes-panel .notes-header');
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'notes-undo-btn'; undoBtn.textContent = '↺ Kumoa';
+      header.appendChild(undoBtn);
+      const timer = setTimeout(() => { undoBtn.remove(); undoNotes = null; }, 5000);
+      undoBtn.addEventListener('click', () => {
+        clearTimeout(timer);
+        notes.push(...undoNotes); undoNotes = null; undoBtn.remove();
+        saveNotes(); renderNotes();
+      });
+    });
+    document.getElementById('clearTodosBtn').addEventListener('click', () => {
+      if (!confirm('Tyhjennetäänkö kaikki tehtävät?')) return;
+      undoTodos = todos.map(t => ({ ...t }));
+      todos.length = 0;
+      saveTodos(); renderTodos();
+      const header = document.querySelector('.todo-panel .notes-header');
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'notes-undo-btn'; undoBtn.textContent = '↺ Kumoa';
+      header.appendChild(undoBtn);
+      const timer = setTimeout(() => { undoBtn.remove(); undoTodos = null; }, 5000);
+      undoBtn.addEventListener('click', () => {
+        clearTimeout(timer);
+        todos.push(...undoTodos); undoTodos = null; undoBtn.remove();
+        saveTodos(); renderTodos();
+      });
+    });
     document.querySelectorAll('.color-btn').forEach(btn => {
       btn.addEventListener('click', () => { activeNoteColor = btn.dataset.color; });
     });
@@ -1407,7 +1695,27 @@
     document.getElementById('templateBtn').addEventListener('click', saveTemplate);
     document.getElementById('saveBtn').addEventListener('click', saveWeek);
     document.getElementById('loadBtn').addEventListener('click', () => loadWeek(true));
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    function beforePrint() {
+      document.querySelectorAll('.note-card textarea').forEach(ta => {
+        const div = document.createElement('div');
+        div.className = 'note-print-text';
+        div.textContent = ta.value;
+        ta.after(div);
+      });
+      if (notes.length > 0 || todos.length > 0) document.body.classList.add('print-has-notes');
+    }
+    function afterPrint() {
+      document.querySelectorAll('.note-print-text').forEach(el => el.remove());
+      document.body.classList.remove('print-has-notes');
+    }
+    function printPage() {
+      beforePrint();
+      window.print();
+      afterPrint();
+    }
+    window.addEventListener('focus', afterPrint);
+
+    document.getElementById('printBtn').addEventListener('click', printPage);
     document.getElementById('prevWeek').addEventListener('click', () => navigate(-1));
     document.getElementById('nextWeek').addEventListener('click', () => navigate(1));
     document.getElementById('popupClose').addEventListener('click', closePopup);
@@ -1421,6 +1729,18 @@
     document.getElementById('addRhythmBtn').addEventListener('click', () => {
       rhythms.push({ name: '', startMinutes: 480 });
       renderRhythms();
+    });
+    document.getElementById('addSubjectBtn').addEventListener('click', () => {
+      const input = document.getElementById('subjectAddCode');
+      const errDiv = document.getElementById('subjectAddError');
+      const code = normalizeCode(input.value);
+      if (!code) { errDiv.textContent = 'Syötä tunnus.'; return; }
+      if (subjects.find(x => x.code === code)) { errDiv.textContent = 'Tunnus on jo käytössä.'; return; }
+      errDiv.textContent = '';
+      subjects.push({ code, name: '', color: '#9ca3af' });
+      saveSubjects();
+      input.value = '';
+      renderSubjectsSection();
     });
     document.getElementById('popupResetTime').addEventListener('click', () => {
       if (!popupState) return;
@@ -1447,7 +1767,7 @@
       const hasOverride = startMin !== computed.start || endMin !== computed.end;
       if (!weekData[key]) weekData[key] = {};
       if (!weekData[key][DAYS[tgtDay]]) weekData[key][DAYS[tgtDay]] = {};
-      const copy = { participants: [...popupParticipants], text: document.getElementById('popupText').value };
+      const copy = { participants: [...popupParticipants], text: document.getElementById('popupText').value, subjects: [...popupSubjects] };
       if (hasOverride) { copy.startOverride = startMin; copy.endOverride = endMin; }
       weekData[key][DAYS[tgtDay]][String(tgtSlot)] = copy;
       dirty = true;
@@ -1459,11 +1779,15 @@
 
     dayBreaks = defaultDayBreaks();
     registry = [];
+    loadSubjects();
     updateHeader();
     renderGrid();
+    loadNotesFromWeek(getWeekKey(currentWeekOffset));
+    renderNotes(); renderTodos();
     renderRegistry();
     renderRhythms();
     renderBreaksEditor();
+    renderSubjectsSection();
     document.getElementById('clearLunchBtn').addEventListener('click', () => {
       document.getElementById('lunchStartInput').value = '';
     });
@@ -1479,6 +1803,7 @@
     document.getElementById('clearCellBtn').addEventListener('click', () => {
       if (!popupState) return;
       popupParticipants = [];
+      popupSubjects = [];
       document.getElementById('popupText').value = '';
       document.getElementById('lunchStartInput').value = '';
       const supBtn = document.getElementById('supervisionBtn');
@@ -1492,6 +1817,7 @@
       if (weekData[key]?.[DAYS[dayIdx]]) delete weekData[key][DAYS[dayIdx]][String(slotIdx)];
       dirty = true;
       renderPopupParticipants();
+      renderPopupSubjects();
       renderGrid();
     });
     checkForStoredHandle();
