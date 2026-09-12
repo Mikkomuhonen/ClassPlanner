@@ -4,10 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ClassPlanner – Viikkosuunnitelma</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    :root {
+      /* ---- Design tokens ---- */
+      --ink: #1c2b3a;
+      --ink-soft: #2c4055;
+      --paper: #f6f4ef;
+      --chalk-blue: #3d6b8c;
+      --chalk-blue-soft: #eaf1f5;
+      --marker-amber: #b6650a;
+      --marker-amber-soft: #fbf0dd;
+      --signal-green: #2f7a4f;
+      --signal-green-soft: #e9f5ee;
+      /* ---- Type scale ---- */
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+      --fs-xs: 0.72rem;
+      --fs-sm: 0.82rem;
+      --fs-base: 0.9rem;
+      --fs-md: 1.0rem;
+      --fs-lg: 1.15rem;
+    }
+
+    body { font-family: var(--font-body); font-size: 14px; background: var(--paper); color: var(--ink); }
 
     /* ---- TOOLBAR ---- */
     #toolbar {
@@ -15,7 +38,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 16px;
-      background: #1e3a5f;
+      background: var(--ink);
       color: white;
       gap: 12px;
       flex-wrap: wrap;
@@ -23,21 +46,44 @@
       top: 0;
       z-index: 100;
     }
-    .toolbar-left h1 { font-size: 1.05em; font-weight: 700; letter-spacing: -0.3px; }
-    .toolbar-center { display: flex; align-items: center; gap: 10px; font-size: 0.9em; font-weight: 500; }
+    .toolbar-left h1 { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.2px; }
+    .toolbar-center { display: flex; align-items: center; gap: 10px; font-size: var(--fs-base); font-weight: 500; }
     .toolbar-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     #toolbar button {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
       color: white;
-      border: 1px solid rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.2);
       padding: 5px 10px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 0.82em;
-      transition: background 0.15s;
+      font-size: var(--fs-sm);
+      transition: background 0.15s, border-color 0.15s;
     }
-    #toolbar button:hover { background: rgba(255,255,255,0.22); }
-    body.edit-mode #editToggle { background: #f59e0b; color: #1a1a1a; border-color: #d97706; font-weight: 600; }
+    #toolbar button:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.32); }
+    body.edit-mode #editToggle { background: var(--marker-amber); color: white; border-color: var(--marker-amber); font-weight: 600; }
+    #signInBtn { background: var(--chalk-blue); border-color: var(--chalk-blue); font-weight: 600; }
+    #signInBtn:hover { background: #33607e; }
+    #authError { color: #ffb4a8; }
+
+    /* ---- SIGNED-OUT OVERLAY ---- */
+    #signedOutOverlay {
+      text-align: center;
+      padding: 90px 20px 100px;
+      color: var(--ink);
+    }
+    #signedOutOverlay h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 10px;
+      color: var(--ink);
+    }
+    #signedOutOverlay p {
+      font-size: var(--fs-md);
+      color: #5b6472;
+      max-width: 360px;
+      margin: 0 auto;
+    }
 
     /* ---- MAIN ---- */
     main { padding: 16px; max-width: 1400px; margin: 0 auto; }
@@ -52,26 +98,34 @@
       border-radius: 6px;
       overflow: hidden;
     }
-    #grid th, #grid td { border: 1px solid #d1d5db; vertical-align: top; }
+    #grid th, #grid td { border: 1px solid #d9d3c7; vertical-align: top; }
     #grid thead th {
-      background: #2c5282;
+      background: var(--ink-soft);
       color: white;
       padding: 8px 10px;
-      font-size: 0.88em;
+      font-size: var(--fs-sm);
       text-align: center;
       font-weight: 600;
+      position: relative;
     }
     #grid thead th:first-child { width: 76px; }
+    #grid thead th.day-today { background: var(--chalk-blue); }
+    #grid thead th.day-today::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 3px; background: #ffffff;
+    }
+    #gridBody td.day-today { box-shadow: inset 3px 0 0 var(--chalk-blue); }
 
     .time-cell {
       padding: 5px 7px;
-      font-size: 0.85em;
+      font-size: var(--fs-sm);
       font-weight: 700;
-      color: #374151;
+      color: #4b4438;
       width: 76px;
       text-align: center;
       vertical-align: middle;
-      background: #fafafa;
+      background: #faf8f3;
     }
 
     .lesson-cell {
@@ -83,37 +137,37 @@
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
-    .lesson-cell:hover { background: #eff6ff; }
-    .lesson-cell.has-content { background: #fefce8; }
-    .lesson-cell.has-content:hover { background: #fef9c3; }
-    .cell-time { font-size: 0.72em; color: #6b7280; margin-bottom: 2px; }
-    .cell-participants { font-size: 0.72em; color: #6b7280; margin-bottom: 2px; font-style: italic; }
+    .lesson-cell:hover { background: var(--chalk-blue-soft); }
+    .lesson-cell.has-content { background: white; box-shadow: inset 3px 0 0 var(--chalk-blue); }
+    .lesson-cell.has-content:hover { background: var(--chalk-blue-soft); }
+    .cell-time { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; }
+    .cell-participants { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; font-style: italic; }
 
-    .cell-text { font-size: 0.82em; line-height: 1.35; color: #374151; white-space: pre-wrap; }
+    .cell-text { font-size: var(--fs-sm); line-height: 1.35; color: #374151; white-space: pre-wrap; }
     .cell-break { font-size: 0.7em; color: #9ca3af; text-align: center; padding: 3px 0 2px; border-top: 1px dashed #e5e7eb; margin-top: 4px; }
-    .cell-lunch-break { font-size: 0.72em; color: #92400e; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .cell-lunch-break { font-size: var(--fs-xs); color: var(--marker-amber); background: var(--marker-amber-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .break-entry-lunch {
       display: inline-flex; align-items: center; gap: 2px;
-      background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px;
+      background: var(--marker-amber-soft); border: 1px solid #e2b060; border-radius: 4px;
       padding: 2px 4px; font-size: 0.78em;
     }
     .break-lunch-btn {
-      background: none; border: 1px dashed #d97706; color: #92400e;
+      background: none; border: 1px dashed var(--marker-amber); color: var(--marker-amber);
       border-radius: 4px; cursor: pointer; padding: 0px 5px; font-size: 0.78em; line-height: 1.6;
     }
-    .break-lunch-btn:hover { background: #fef3c7; }
-    .cell-lunch { font-size: 0.72em; color: #b45309; background: #fef3c7; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
-    .cell-supervision { font-size: 0.72em; color: #1d4ed8; background: #dbeafe; border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .break-lunch-btn:hover { background: var(--marker-amber-soft); }
+    .cell-lunch { font-size: var(--fs-xs); color: var(--marker-amber); background: var(--marker-amber-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .cell-supervision { font-size: var(--fs-xs); color: var(--signal-green); background: var(--signal-green-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .popup-lunch-row {
       display: flex; align-items: center; gap: 8px; padding: 8px 15px;
-      border-top: 1px solid #e5e7eb; flex-shrink: 0; background: #fffbeb; flex-wrap: wrap;
+      border-top: 1px solid #e5e7eb; flex-shrink: 0; background: var(--marker-amber-soft); flex-wrap: wrap;
     }
-    .popup-lunch-row label { font-size: 0.82em; color: #92400e; }
-    .lunch-time-input { border: 1px solid #fcd34d; border-radius: 4px; padding: 3px 6px; font-size: 0.85em; outline: none; width: 100px; }
-    .lunch-time-input:focus { border-color: #d97706; }
-    .lunch-dur-select { border: 1px solid #fcd34d; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
-    #clearLunchBtn { background: none; border: none; color: #92400e; cursor: pointer; font-size: 0.78em; text-decoration: underline; padding: 0; }
-    .cell-time.time-overridden { color: #d97706; font-weight: 600; }
+    .popup-lunch-row label { font-size: var(--fs-sm); color: var(--marker-amber); }
+    .lunch-time-input { border: 1px solid #e2b060; border-radius: 4px; padding: 3px 6px; font-size: 0.85em; outline: none; width: 100px; }
+    .lunch-time-input:focus { border-color: var(--marker-amber); }
+    .lunch-dur-select { border: 1px solid #e2b060; border-radius: 4px; padding: 3px 6px; font-size: 0.82em; outline: none; }
+    #clearLunchBtn { background: none; border: none; color: var(--marker-amber); cursor: pointer; font-size: 0.78em; text-decoration: underline; padding: 0; }
+    .cell-time.time-overridden { color: var(--marker-amber); font-weight: 600; }
 
     /* ---- BREAKS SECTION ---- */
     #breaksSection {
@@ -271,7 +325,7 @@
     }
     #popupHeader {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 15px; background: #2c5282; color: white; flex-shrink: 0;
+      padding: 11px 15px; background: var(--ink-soft); color: white; flex-shrink: 0;
     }
     #popupTitle { font-weight: 600; font-size: 0.9em; }
     #popupClose { background: none; border: none; color: white; cursor: pointer; font-size: 1.1em; padding: 2px 5px; border-radius: 3px; }
@@ -400,7 +454,7 @@
       <button id="nextWeek">▶</button>
     </div>
     <div class="toolbar-right">
-      <span id="authError" style="display:none; color:#fecaca; font-size:0.8em; max-width:220px;"></span>
+      <span id="authError" style="display:none; font-size:0.8em; max-width:220px;"></span>
       <button id="signInBtn">🔑 Kirjaudu Googlella</button>
       <span id="userName" style="display:none; font-size:0.85em; opacity:0.85;"></span>
       <button id="signOutBtn" style="display:none">🚪 Kirjaudu ulos</button>
@@ -412,8 +466,8 @@
     </div>
   </header>
 
-  <div id="signedOutOverlay" style="display:none; text-align:center; padding:60px 20px; color:#4b5563;">
-    <h2 style="margin-bottom:12px;">Kirjaudu sisään jatkaaksesi</h2>
+  <div id="signedOutOverlay" style="display:none;">
+    <h2>Kirjaudu sisään jatkaaksesi</h2>
     <p>Kirjaudu sisään Google-tilillä nähdäksesi ja muokataksesi viikkosuunnitelmiasi.</p>
   </div>
 
@@ -677,6 +731,15 @@
       return `${d.getUTCDate()}.${d.getUTCMonth() + 1}.`;
     }
 
+    function isTodayColumn(dayIdx) {
+      const { dates } = getWeekInfo(currentWeekOffset);
+      const d = dates[dayIdx];
+      const now = new Date();
+      return d.getUTCFullYear() === now.getFullYear() &&
+             d.getUTCMonth() === now.getMonth() &&
+             d.getUTCDate() === now.getDate();
+    }
+
     // =================== SCHEDULE (per-day breaks) ===================
     const LESSON_COUNT = 7;
 
@@ -726,6 +789,7 @@
       while (headRow.children.length > 1) headRow.removeChild(headRow.lastChild);
       for (let d = 0; d < 5; d++) {
         const th = document.createElement('th');
+        if (isTodayColumn(d)) th.classList.add('day-today');
         if (!isEdit) {
           th.textContent = `${DAY_FULL[d]} (${rhythms[dayRhythms[d]].name || '?'})`;
           const capD = d;
@@ -786,6 +850,7 @@
         for (let d = 0; d < 5; d++) {
           const td = document.createElement('td');
           td.className = 'lesson-cell';
+          if (isTodayColumn(d)) td.classList.add('day-today');
 
           const timeDiv = document.createElement('div');
           const t = getCellTime(d, curLi, key);
