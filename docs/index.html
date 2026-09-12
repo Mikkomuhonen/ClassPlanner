@@ -330,6 +330,16 @@
     #popupTitle { font-weight: 600; font-size: 0.9em; }
     #popupClose { background: none; border: none; color: white; cursor: pointer; font-size: 1.1em; padding: 2px 5px; border-radius: 3px; }
     #popupClose:hover { background: rgba(255,255,255,0.15); }
+    .popup-footer-row {
+      display: flex; align-items: center; gap: 8px; padding: 10px 15px;
+      border-top: 1px solid #e5e7eb; flex-shrink: 0; background: #f9fafb;
+    }
+    .popup-footer-row button { font-size: 0.85em; border-radius: 4px; padding: 6px 16px; cursor: pointer; }
+    #popupCancelBtn { background: white; border: 1px solid #d1d5db; color: var(--ink-soft, #374151); margin-left: auto; }
+    #popupCancelBtn:hover { background: #f3f4f6; }
+    #popupSaveBtn { background: var(--chalk-blue); border: 1px solid var(--chalk-blue); color: white; font-weight: 600; }
+    #popupSaveBtn:hover { filter: brightness(1.08); }
+    #popupSaveFeedback { font-size: 0.78em; color: #16a34a; }
     #popupParticipants { padding: 12px 15px; overflow-y: auto; max-height: 210px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
     .popup-group { margin-bottom: 10px; }
     .popup-group:last-child { margin-bottom: 0; }
@@ -581,6 +591,11 @@
       <div class="popup-lunch-row">
         <button id="supervisionBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🏃 Välkkävalvonta</button>
         <button id="clearCellBtn" style="margin-left:auto;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
+      </div>
+      <div class="popup-footer-row">
+        <span id="popupSaveFeedback"></span>
+        <button id="popupCancelBtn">Peruuta</button>
+        <button id="popupSaveBtn">Tallenna</button>
       </div>
     </div>
   </div>
@@ -962,7 +977,19 @@
       document.getElementById('popupText').focus();
     }
 
-    function closePopup() {
+    function hidePopupOverlay() {
+      popupState = null;
+      popupParticipants = [];
+      popupSubjects = [];
+      document.getElementById('popupOverlay').classList.remove('open');
+    }
+
+    function cancelPopup() {
+      if (!popupState) return;
+      hidePopupOverlay();
+    }
+
+    function savePopup() {
       if (!popupState) return;
       const { dayIdx, slotIdx } = popupState;
       const key = getWeekKey(currentWeekOffset);
@@ -988,12 +1015,16 @@
       if (document.getElementById('supervisionBtn').dataset.active === '1') slotData.breakSupervision = true;
       weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
       dirty = true;
-      popupState = null;
-      popupParticipants = [];
-      popupSubjects = [];
-      document.getElementById('popupOverlay').classList.remove('open');
       renderGrid();
+
+      const feedback = document.getElementById('popupSaveFeedback');
+      feedback.textContent = '✓ Tallennettu';
+      setTimeout(() => {
+        feedback.textContent = '';
+        hidePopupOverlay();
+      }, 900);
     }
+
 
     function renderPopupParticipants() {
       const container = document.getElementById('popupParticipants');
@@ -1871,10 +1902,12 @@
     document.getElementById('printBtn').addEventListener('click', printPage);
     document.getElementById('prevWeek').addEventListener('click', () => navigate(-1));
     document.getElementById('nextWeek').addEventListener('click', () => navigate(1));
-    document.getElementById('popupClose').addEventListener('click', closePopup);
+    document.getElementById('popupClose').addEventListener('click', cancelPopup);
     document.getElementById('popupOverlay').addEventListener('click', e => {
-      if (e.target === document.getElementById('popupOverlay')) closePopup();
+      if (e.target === document.getElementById('popupOverlay')) cancelPopup();
     });
+    document.getElementById('popupCancelBtn').addEventListener('click', cancelPopup);
+    document.getElementById('popupSaveBtn').addEventListener('click', savePopup);
     document.getElementById('addGroupBtn').addEventListener('click', () => {
       registry.push({ name: '', members: [] });
       renderRegistry();
