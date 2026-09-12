@@ -38,7 +38,6 @@
     }
     #toolbar button:hover { background: rgba(255,255,255,0.22); }
     body.edit-mode #editToggle { background: #f59e0b; color: #1a1a1a; border-color: #d97706; font-weight: 600; }
-    #folderName { font-size: 0.78em; opacity: 0.7; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ---- MAIN ---- */
     main { padding: 16px; max-width: 1400px; margin: 0 auto; }
@@ -401,9 +400,10 @@
       <button id="nextWeek">▶</button>
     </div>
     <div class="toolbar-right">
-      <button id="folderBtn">📁 Valitse kansio</button>
-      <button id="restoreBtn" style="display:none">↩ Jatka: <span id="restoreName"></span></button>
-      <span id="folderName">–</span>
+      <span id="authError" style="display:none; color:#fecaca; font-size:0.8em; max-width:220px;"></span>
+      <button id="signInBtn">🔑 Kirjaudu Googlella</button>
+      <span id="userName" style="display:none; font-size:0.85em; opacity:0.85;"></span>
+      <button id="signOutBtn" style="display:none">🚪 Kirjaudu ulos</button>
       <button id="saveBtn">💾 Tallenna</button>
       <button id="loadBtn">📂 Avaa viikko</button>
       <button id="templateBtn" title="Tallenna nykyinen viikko pohjana uusille viikoille">📋 Pohja</button>
@@ -412,7 +412,12 @@
     </div>
   </header>
 
-  <main>
+  <div id="signedOutOverlay" style="display:none; text-align:center; padding:60px 20px; color:#4b5563;">
+    <h2 style="margin-bottom:12px;">Kirjaudu sisään jatkaaksesi</h2>
+    <p>Kirjaudu sisään Google-tilillä nähdäksesi ja muokataksesi viikkosuunnitelmiasi.</p>
+  </div>
+
+  <main id="appMain">
     <table id="grid">
       <thead>
         <tr id="gridHeadRow">
@@ -526,6 +531,53 @@
     </div>
   </div>
 
+  <!-- Firebase SDK (Auth + Firestore) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB8nsDpqeNXqgHumGf0L2fcfhQgCh0oDkM",
+      authDomain: "classplanner-9d6f7.firebaseapp.com",
+      projectId: "classplanner-9d6f7",
+      storageBucket: "classplanner-9d6f7.firebasestorage.app",
+      messagingSenderId: "74261581438",
+      appId: "1:74261581438:web:ae567a206368256eac522f",
+      measurementId: "G-QRJMTR9BVV"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    const auth = getAuth(fbApp);
+    const db = getFirestore(fbApp);
+    const googleProvider = new GoogleAuthProvider();
+
+    // Expose a minimal API on window for the classic <script> block below to use.
+    window.cpFirebase = {
+      auth, db, doc, getDoc, setDoc, onSnapshot,
+      currentUser: null,
+      onReady: null, // callback set by the app script once DOM is wired
+
+      signIn() {
+        return signInWithPopup(auth, googleProvider);
+      },
+      signOut() {
+        return signOut(auth);
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      window.cpFirebase.currentUser = user;
+      if (typeof window.cpOnAuthStateChanged === 'function') {
+        window.cpOnAuthStateChanged(user);
+      }
+    });
+  </script>
+
   <script>
     // =================== CONSTANTS ===================
     const DAYS      = ['Ma', 'Ti', 'Ke', 'To', 'Pe'];
@@ -536,11 +588,11 @@
     let registry = [];        // [{name:string, members:string[]}]
     let weekData = {};        // {weekKey: {dayAbbr: {slotIdx: {participants:[], text:"", startOverride?, endOverride?}}}}
     let currentWeekOffset = 0;
-    let dirHandle = null;
     let dirty = false;
     let popupState = null;    // {dayIdx, slotIdx} or null
     let popupParticipants = [];
     let subjects = [];            // [{code, name, color}]
+    let subjectsUnsub = null;
     let popupSubjects = [];       // codes selected in current popup
     let rhythms = [
       { name: 'A', startMinutes: 505 },
@@ -550,11 +602,42 @@
     let undoState = null;  // {weekKey, affected:[{dayIdx, breaks, rhythm, cells}]}
 
     // =================== SUBJECTS ===================
-    function loadSubjects() {
-      try { subjects = JSON.parse(localStorage.getItem('cp_subjects') || '[]'); } catch(e) { subjects = []; }
+    function subjectsDocRef(uid) {
+      const { db, doc } = window.cpFirebase;
+      return doc(db, 'users', uid, 'subjects', 'main');
     }
-    function saveSubjects() {
-      localStorage.setItem('cp_subjects', JSON.stringify(subjects));
+    async function loadSubjects() {
+      const uid = currentUid();
+      if (!uid) { subjects = []; return; }
+      try {
+        const { getDoc } = window.cpFirebase;
+        const snap = await getDoc(subjectsDocRef(uid));
+        subjects = (snap.exists() && Array.isArray(snap.data().registry)) ? snap.data().registry : [];
+      } catch (e) {
+        console.error('Oppiainerekisterin lataus epäonnistui:', e);
+        subjects = [];
+      }
+      subscribeToSubjects(uid);
+    }
+    function subscribeToSubjects(uid) {
+      const { onSnapshot } = window.cpFirebase;
+      if (subjectsUnsub) { subjectsUnsub(); subjectsUnsub = null; }
+      subjectsUnsub = onSnapshot(subjectsDocRef(uid), (snap) => {
+        if (snap.exists() && Array.isArray(snap.data().registry)) {
+          subjects = snap.data().registry;
+          renderRegistry(); renderSubjectsSection(); renderGrid();
+        }
+      }, (err) => console.error('Oppiainerekisterin reaaliaikaseuranta epäonnistui:', err));
+    }
+    async function saveSubjects() {
+      const uid = currentUid();
+      if (!uid) return;
+      try {
+        const { setDoc } = window.cpFirebase;
+        await setDoc(subjectsDocRef(uid), { registry: subjects });
+      } catch (e) {
+        console.error('Oppiainerekisterin tallennus epäonnistui:', e);
+      }
     }
     function normalizeCode(s) {
       return s.trim().toUpperCase();
@@ -1376,111 +1459,65 @@
       if (!isEdit) await saveConfig();
     }
 
-    // =================== FILE PERSISTENCE ===================
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open('classplanner', 1);
-        req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
-        req.onsuccess = e => resolve(e.target.result);
-        req.onerror = e => reject(e.target.error);
-      });
+    // =================== CLOUD PERSISTENCE (Firestore) ===================
+    let weekUnsub = null;
+    let configUnsub = null;
+
+    function currentUid() {
+      return window.cpFirebase?.currentUser?.uid || null;
     }
-    async function saveHandleToDB(handle) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('handles', 'readwrite');
-        tx.objectStore('handles').put(handle, 'dirHandle');
-        tx.oncomplete = resolve; tx.onerror = reject;
-      });
+
+    function weekDocRef(uid, key) {
+      const { db, doc } = window.cpFirebase;
+      return doc(db, 'users', uid, 'weeks', key);
     }
-    async function loadHandleFromDB() {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('handles', 'readonly');
-        const req = tx.objectStore('handles').get('dirHandle');
-        req.onsuccess = e => resolve(e.target.result);
-        req.onerror = e => reject(e.target.error);
-      });
+    function configDocRef(uid) {
+      const { db, doc } = window.cpFirebase;
+      return doc(db, 'users', uid, 'config', 'main');
     }
-    async function tryRestoreHandle() {
-      const btn = document.getElementById('restoreBtn');
-      try {
-        const handle = await loadHandleFromDB();
-        if (!handle) return;
-        const perm = await handle.requestPermission({ mode: 'readwrite' });
-        if (perm === 'granted') {
-          dirHandle = handle;
-          document.getElementById('folderName').textContent = handle.name;
-          btn.style.display = 'none';
-          await loadConfig();
-          await loadWeek();
-        } else {
-          btn.style.display = 'none';
-        }
-      } catch (e) {
-        console.log('Kansion palautus epäonnistui:', e);
-        btn.style.display = 'none';
-      }
-    }
-    async function checkForStoredHandle() {
-      try {
-        const handle = await loadHandleFromDB();
-        if (!handle) return;
-        const btn = document.getElementById('restoreBtn');
-        document.getElementById('restoreName').textContent = handle.name;
-        btn.style.display = '';
-      } catch (e) {
-        // IndexedDB unavailable, silently ignore
-      }
-    }
-    async function selectFolder() {
-      if (!window.showDirectoryPicker) {
-        alert('Selaimesi ei tue kansionvalintaa (showDirectoryPicker). Käytä Chrome- tai Edge-selainta localhost-osoitteella.');
-        return;
-      }
-      try {
-        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-        document.getElementById('folderName').textContent = dirHandle.name;
-        await saveHandleToDB(dirHandle);
-        await loadConfig();
-        await loadWeek();
-      } catch (e) {
-        if (e.name !== 'AbortError') console.error('Kansion valinta epäonnistui:', e);
-      }
+    function templateDocRef(uid) {
+      const { db, doc } = window.cpFirebase;
+      return doc(db, 'users', uid, 'weeks', '_template');
     }
 
     async function saveTemplate() {
-      if (!dirHandle) { alert('Valitse ensin tallennuskansio (📁).'); return; }
+      const uid = currentUid();
+      if (!uid) { alert('Kirjaudu ensin sisään.'); return; }
       const key = getWeekKey(currentWeekOffset);
       const slots = (weekData[key] || {});
       try {
-        const fh = await dirHandle.getFileHandle('template.json', { create: true });
-        const w = await fh.createWritable();
-        await w.write(JSON.stringify({ slots }, null, 2));
-        await w.close();
+        const { setDoc } = window.cpFirebase;
+        await setDoc(templateDocRef(uid), { slots });
         const btn = document.getElementById('templateBtn');
         const orig = btn.textContent; btn.textContent = '✓ Pohja tallennettu';
         setTimeout(() => { btn.textContent = orig; }, 1800);
       } catch (e) { alert('Pohjan tallennus epäonnistui: ' + e.message); }
     }
     async function applyTemplate(key) {
-      if (!dirHandle) return;
+      const uid = currentUid();
+      if (!uid) return;
       try {
-        const fh = await dirHandle.getFileHandle('template.json');
-        const data = JSON.parse(await (await fh.getFile()).text());
-        if (data.slots) { weekData[key] = data.slots; renderGrid(); }
+        const { getDoc } = window.cpFirebase;
+        const snap = await getDoc(templateDocRef(uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.slots) { weekData[key] = data.slots; renderGrid(); }
+        }
       } catch (e) { /* ei pohja-tiedostoa, ei hätää */ }
     }
     async function saveWeek() {
-      if (!dirHandle) { alert('Valitse ensin tallennuskansio (📁).'); return; }
+      const uid = currentUid();
+      if (!uid) { alert('Kirjaudu ensin sisään.'); return; }
       const key = getWeekKey(currentWeekOffset);
       try {
-        const fh = await dirHandle.getFileHandle(`viikko_${key}.json`, { create: true });
-        const w = await fh.createWritable();
-        await w.write(JSON.stringify({ weekKey: key, slots: weekData[key] || {}, notes: weekData[key]?.notes || [], todos: weekData[key]?.todos || [] }, null, 2));
-        await w.close();
+        const { setDoc } = window.cpFirebase;
+        await setDoc(weekDocRef(uid, key), {
+          weekKey: key,
+          slots: weekData[key] || {},
+          notes: weekData[key]?.notes || [],
+          todos: weekData[key]?.todos || []
+        });
         dirty = false;
-        // Brief visual feedback without alert
         const btn = document.getElementById('saveBtn');
         const orig = btn.textContent;
         btn.textContent = '✓ Tallennettu';
@@ -1490,81 +1527,117 @@
       }
     }
 
+    function applyWeekData(key, data, showFeedback) {
+      if (data.slots) weekData[key] = data.slots;
+      if (Array.isArray(data.notes)) weekData[key].notes = data.notes;
+      if (Array.isArray(data.todos)) weekData[key].todos = data.todos;
+      loadNotesFromWeek(key);
+      renderNotes(); renderTodos();
+      renderGrid();
+      if (showFeedback) {
+        const btn = document.getElementById('loadBtn');
+        const orig = btn.textContent; btn.textContent = '\u2713 Ladattu';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }
+    }
+
     async function loadWeek(showFeedback = false) {
-      if (!dirHandle) {
-        if (showFeedback) alert('Valitse ensin tallennuskansio (📁).');
+      const uid = currentUid();
+      if (!uid) {
+        if (showFeedback) alert('Kirjaudu ensin sisään.');
         return;
       }
       const key = getWeekKey(currentWeekOffset);
       try {
-        const fh = await dirHandle.getFileHandle(`viikko_${key}.json`);
-        const file = await fh.getFile();
-        const data = JSON.parse(await file.text());
-        if (data.slots) weekData[key] = data.slots;
-        if (Array.isArray(data.notes)) weekData[key].notes = data.notes;
-        if (Array.isArray(data.todos)) weekData[key].todos = data.todos;
-        loadNotesFromWeek(key);
-        renderNotes(); renderTodos();
-        renderGrid();
-        if (showFeedback) {
-          const btn = document.getElementById('loadBtn');
-          const orig = btn.textContent; btn.textContent = '\u2713 Ladattu';
-          setTimeout(() => { btn.textContent = orig; }, 1500);
-        }
-      } catch (e) {
-        if (e.name === 'NotFoundError') {
+        const { getDoc } = window.cpFirebase;
+        const snap = await getDoc(weekDocRef(uid, key));
+        if (snap.exists()) {
+          applyWeekData(key, snap.data(), showFeedback);
+        } else {
           if (showFeedback) {
             const btn = document.getElementById('loadBtn');
             const orig = btn.textContent; btn.textContent = 'Ei dataa tälle viikolle';
             setTimeout(() => { btn.textContent = orig; }, 2000);
           }
           await applyTemplate(key);
-        } else {
-          console.error('Viikon lataus ep\u00e4onnistui:', e);
         }
+        subscribeToWeek(uid, key);
+      } catch (e) {
+        console.error('Viikon lataus ep\u00e4onnistui:', e);
+        alert('Viikon lataus epäonnistui: ' + e.message);
       }
+    }
+
+    function subscribeToWeek(uid, key) {
+      const { onSnapshot } = window.cpFirebase;
+      if (weekUnsub) { weekUnsub(); weekUnsub = null; }
+      weekUnsub = onSnapshot(weekDocRef(uid, key), (snap) => {
+        if (snap.exists() && getWeekKey(currentWeekOffset) === key) {
+          applyWeekData(key, snap.data(), false);
+        }
+      }, (err) => console.error('Viikon reaaliaikaseuranta epäonnistui:', err));
     }
 
     async function saveConfig() {
-      if (!dirHandle) return;
+      const uid = currentUid();
+      if (!uid) return;
       try {
-        const fh = await dirHandle.getFileHandle('config.json', { create: true });
-        const w = await fh.createWritable();
-        await w.write(JSON.stringify({ dayBreaks, registry, rhythms, dayRhythms }, null, 2));
-        await w.close();
+        const { setDoc } = window.cpFirebase;
+        // Firestore does not support arrays-of-arrays; encode dayBreaks (array of arrays)
+        // as a plain object keyed by day index instead.
+        const dayBreaksByIndex = {};
+        dayBreaks.forEach((breaks, idx) => { dayBreaksByIndex[idx] = breaks; });
+        await setDoc(configDocRef(uid), { dayBreaksByIndex, registry, rhythms, dayRhythms });
       } catch (e) {
         console.error('Konfiguraation tallennus epäonnistui:', e);
+        alert('Konfiguraation tallennus epäonnistui: ' + e.message);
       }
     }
 
-    async function loadConfig() {
-      if (!dirHandle) return;
-      try {
-        const fh = await dirHandle.getFileHandle('config.json');
-        const file = await fh.getFile();
-        const data = JSON.parse(await file.text());
-        if (Array.isArray(data.dayBreaks) && data.dayBreaks.length === 5) {
-          dayBreaks = data.dayBreaks;
-        } else if (Array.isArray(data.schedule) && data.schedule.length) {
-          // Migrate legacy schedule to per-day breaks
-          let lessonCount = 0;
-          const breaks = [];
-          for (const slot of data.schedule) {
-            if (slot.type === 'lesson') lessonCount++;
-            else if (slot.type === 'break') breaks.push({ afterLesson: lessonCount - 1, duration: slot.duration });
-          }
-          dayBreaks = Array.from({ length: 5 }, () => breaks.map(b => ({ ...b })));
+    function applyConfigData(data) {
+      if (data.dayBreaksByIndex && typeof data.dayBreaksByIndex === 'object') {
+        dayBreaks = Array.from({ length: 5 }, (_, idx) => data.dayBreaksByIndex[idx] || data.dayBreaksByIndex[String(idx)] || []);
+      } else if (Array.isArray(data.dayBreaks) && data.dayBreaks.length === 5) {
+        // Backward compatible with older local-file config shape
+        dayBreaks = data.dayBreaks;
+      } else if (Array.isArray(data.schedule) && data.schedule.length) {
+        // Migrate legacy schedule to per-day breaks
+        let lessonCount = 0;
+        const breaks = [];
+        for (const slot of data.schedule) {
+          if (slot.type === 'lesson') lessonCount++;
+          else if (slot.type === 'break') breaks.push({ afterLesson: lessonCount - 1, duration: slot.duration });
         }
-        if (Array.isArray(data.registry)) registry = data.registry;
-        if (Array.isArray(data.rhythms) && data.rhythms.length) rhythms = data.rhythms;
-        if (Array.isArray(data.dayRhythms) && data.dayRhythms.length === 5) dayRhythms = data.dayRhythms;
-        renderGrid();
-        renderRegistry();
-        renderRhythms();
-        renderBreaksEditor();
-      } catch (e) {
-        if (e.name !== 'NotFoundError') console.error('Konfiguraation lataus epäonnistui:', e);
+        dayBreaks = Array.from({ length: 5 }, () => breaks.map(b => ({ ...b })));
       }
+      if (Array.isArray(data.registry)) registry = data.registry;
+      if (Array.isArray(data.rhythms) && data.rhythms.length) rhythms = data.rhythms;
+      if (Array.isArray(data.dayRhythms) && data.dayRhythms.length === 5) dayRhythms = data.dayRhythms;
+      renderGrid();
+      renderRegistry();
+      renderRhythms();
+      renderBreaksEditor();
+    }
+
+    async function loadConfig() {
+      const uid = currentUid();
+      if (!uid) return;
+      try {
+        const { getDoc } = window.cpFirebase;
+        const snap = await getDoc(configDocRef(uid));
+        if (snap.exists()) applyConfigData(snap.data());
+        subscribeToConfig(uid);
+      } catch (e) {
+        console.error('Konfiguraation lataus epäonnistui:', e);
+      }
+    }
+
+    function subscribeToConfig(uid) {
+      const { onSnapshot } = window.cpFirebase;
+      if (configUnsub) { configUnsub(); configUnsub = null; }
+      configUnsub = onSnapshot(configDocRef(uid), (snap) => {
+        if (snap.exists()) applyConfigData(snap.data());
+      }, (err) => console.error('Konfiguraation reaaliaikaseuranta epäonnistui:', err));
     }
 
     // =================== WEEK NAVIGATION ===================
@@ -1583,7 +1656,7 @@
       dirty = false;
       updateHeader();
       renderGrid();
-      if (dirHandle) await loadWeek();
+      if (currentUid()) await loadWeek();
       else {
         loadNotesFromWeek(getWeekKey(currentWeekOffset));
         renderNotes(); renderTodos();
@@ -1690,8 +1763,23 @@
 
     // =================== EVENT WIRING ===================
     document.getElementById('editToggle').addEventListener('click', toggleEditMode);
-    document.getElementById('folderBtn').addEventListener('click', selectFolder);
-    document.getElementById('restoreBtn').addEventListener('click', tryRestoreHandle);
+    document.getElementById('signInBtn').addEventListener('click', async () => {
+      const errEl = document.getElementById('authError');
+      errEl.style.display = 'none';
+      try {
+        await window.cpFirebase.signIn();
+      } catch (e) {
+        if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+          // user cancelled - stay on sign-in prompt silently
+          return;
+        }
+        errEl.textContent = 'Kirjautuminen epäonnistui: ' + (e.message || e.code || 'tuntematon virhe');
+        errEl.style.display = '';
+      }
+    });
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      await window.cpFirebase.signOut();
+    });
     document.getElementById('templateBtn').addEventListener('click', saveTemplate);
     document.getElementById('saveBtn').addEventListener('click', saveWeek);
     document.getElementById('loadBtn').addEventListener('click', () => loadWeek(true));
@@ -1779,7 +1867,6 @@
 
     dayBreaks = defaultDayBreaks();
     registry = [];
-    loadSubjects();
     updateHeader();
     renderGrid();
     loadNotesFromWeek(getWeekKey(currentWeekOffset));
@@ -1820,7 +1907,40 @@
       renderPopupSubjects();
       renderGrid();
     });
-    checkForStoredHandle();
+    // =================== AUTH STATE GATING ===================
+    function setSignedInUI(user) {
+      document.getElementById('signInBtn').style.display = 'none';
+      document.getElementById('signOutBtn').style.display = '';
+      document.getElementById('userName').style.display = '';
+      document.getElementById('userName').textContent = user.displayName || user.email || '';
+      document.getElementById('authError').style.display = 'none';
+      document.getElementById('signedOutOverlay').style.display = 'none';
+      document.getElementById('appMain').style.display = '';
+    }
+    function setSignedOutUI() {
+      document.getElementById('signInBtn').style.display = '';
+      document.getElementById('signOutBtn').style.display = 'none';
+      document.getElementById('userName').style.display = 'none';
+      document.getElementById('signedOutOverlay').style.display = '';
+      document.getElementById('appMain').style.display = 'none';
+      if (weekUnsub) { weekUnsub(); weekUnsub = null; }
+      if (configUnsub) { configUnsub(); configUnsub = null; }
+      if (subjectsUnsub) { subjectsUnsub(); subjectsUnsub = null; }
+    }
+
+    window.cpOnAuthStateChanged = async function (user) {
+      if (user) {
+        setSignedInUI(user);
+        await loadSubjects();
+        renderRegistry(); renderSubjectsSection();
+        await loadConfig();
+        await loadWeek();
+      } else {
+        setSignedOutUI();
+      }
+    };
+    // Initial state: hidden until Firebase reports auth state
+    document.getElementById('appMain').style.display = 'none';
   </script>
 
 </body>

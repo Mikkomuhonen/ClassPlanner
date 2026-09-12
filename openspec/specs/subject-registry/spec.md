@@ -7,11 +7,15 @@ Ylläpitää pysyvää rekisteriä oppiaineista. Jokaisella oppiaineella on lyhy
 ## Requirements
 
 ### Requirement: Subject registry storage
-The system SHALL persist the subject registry in `localStorage` under a dedicated key. Each subject entry SHALL have a unique code (1–10 characters), an optional display name, and a color value. The registry SHALL survive page reloads.
+The system SHALL persist the subject registry in the signed-in user's cloud storage (see cloud-sync capability) rather than in `localStorage`. Each subject entry SHALL have a unique code (1–10 characters), an optional display name, and a color value. The registry SHALL survive page reloads and be available to the same user across devices.
 
 #### Scenario: Registry persists across reload
 - **WHEN** the user adds a subject and reloads the page
-- **THEN** the subject still appears in the registry
+- **THEN** the subject still appears in the registry, loaded from that user's cloud storage
+
+#### Scenario: Registry persists across devices
+- **WHEN** the user adds a subject while signed in on one device and later signs in on a different device
+- **THEN** the subject appears in the registry on the second device
 
 ### Requirement: Subject registry management in edit mode
 In edit mode the system SHALL display the full subject registry and allow the user to: add a new subject by entering a code; edit an existing subject's code, name, and color; delete a subject; and reorder subjects. The system SHALL prevent saving a subject with a code that duplicates an existing entry.
