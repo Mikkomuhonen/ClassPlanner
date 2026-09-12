@@ -35,9 +35,9 @@
 
 ## 7. Verification Pass
 
-- [ ] 7.1 Manually verify the normal (signed-in) grid view across all weekday columns looks correct with the new palette and typography
-- [ ] 7.2 Manually verify edit mode (structure editing, break add/remove, lunch marker) still functions and looks correct
-- [ ] 7.3 Manually verify the signed-out sign-in overlay and a failed sign-in error state both look correct
-- [ ] 7.4 Manually verify print output (browser print preview) still shows notes with preserved background colors and subject badges with registry colors unchanged, confirming this redesign did not regress existing print requirements
-- [ ] 7.5 Take a screenshot of the redesigned grid and toolbar and do a self-critique pass per the frontend-design skill (does it still read as a generic template, or does it feel deliberate?) before considering the change complete
+- [x] 7.1 Manually verify the normal (signed-in) grid view across all weekday columns looks correct with the new palette and typography
+- [x] 7.2 Manually verify edit mode (structure editing, break add/remove, lunch marker) still functions and looks correct
+- [x] 7.3 Manually verify the signed-out sign-in overlay and a failed sign-in error state both look correct
+- [x] 7.4 Manually verify print output (browser print preview) still shows notes with preserved background colors and subject badges with registry colors unchanged, confirming this redesign did not regress existing print requirements
+- [x] 7.5 Take a screenshot of the redesigned grid and toolbar and do a self-critique pass per the frontend-design skill (does it still read as a generic template, or does it feel deliberate?) before considering the change complete
 

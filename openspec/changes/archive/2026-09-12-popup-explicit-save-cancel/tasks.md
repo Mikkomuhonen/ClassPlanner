@@ -17,8 +17,8 @@
 
 ## 4. Verification Pass
 
-- [ ] 4.1 Manually verify: open a slot, edit text/participants/subjects, click "Tallenna" — the cell reflects the edit and a confirmation is shown
-- [ ] 4.2 Manually verify: open a slot, edit fields, click "Peruuta" — the cell is unchanged from before opening the popup
-- [ ] 4.3 Manually verify: open a slot, edit fields, click ✕ — the cell is unchanged (same as Peruuta)
-- [ ] 4.4 Manually verify: open a slot, edit fields, click the dark backdrop outside the popup — the cell is unchanged (same as Peruuta)
-- [ ] 4.5 Manually verify time override, lunch time, and supervision toggle each still save correctly via "Tallenna" and are discarded correctly via "Peruuta"/✕/backdrop
+- [x] 4.1 Manually verify: open a slot, edit text/participants/subjects, click "Tallenna" — the cell reflects the edit and a confirmation is shown
+- [x] 4.2 Manually verify: open a slot, edit fields, click "Peruuta" — the cell is unchanged from before opening the popup
+- [x] 4.3 Manually verify: open a slot, edit fields, click ✕ — the cell is unchanged (same as Peruuta)
+- [x] 4.4 Manually verify: open a slot, edit fields, click the dark backdrop outside the popup — the cell is unchanged (same as Peruuta)
+- [x] 4.5 Manually verify time override, lunch time, and supervision toggle each still save correctly via "Tallenna" and are discarded correctly via "Peruuta"/✕/backdrop
