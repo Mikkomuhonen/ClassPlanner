@@ -140,6 +140,7 @@
     .lesson-cell:hover { background: var(--chalk-blue-soft); }
     .lesson-cell.has-content { background: white; box-shadow: inset 3px 0 0 var(--chalk-blue); }
     .lesson-cell.has-content:hover { background: var(--chalk-blue-soft); }
+    .lesson-cell.has-subject-color:hover { filter: brightness(0.95); }
     .cell-time { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; }
     .cell-participants { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; font-style: italic; }
 
@@ -744,6 +745,18 @@
       return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
     }
 
+    // =================== COLOR UTILS ===================
+    function hexToRgba(hex, alpha) {
+      if (!hex) return null;
+      const m = hex.replace('#', '');
+      const full = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+      const r = parseInt(full.substring(0, 2), 16);
+      const g = parseInt(full.substring(2, 4), 16);
+      const b = parseInt(full.substring(4, 6), 16);
+      if ([r, g, b].some(Number.isNaN)) return null;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
     function getWeekInfo(offset) {
       const now = new Date();
       const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -946,6 +959,17 @@
               tDiv.className = 'cell-text';
               tDiv.textContent = cell.text;
               td.appendChild(tDiv);
+            }
+          }
+
+          if (cell && cell.subjects?.length) {
+            const primary = subjects.find(x => x.code === cell.subjects[0]);
+            const primaryColor = primary ? primary.color : null;
+            const bg = hexToRgba(primaryColor, 0.16);
+            if (bg) {
+              td.style.background = bg;
+              td.style.boxShadow = `inset 3px 0 0 ${primaryColor}`;
+              td.classList.add('has-subject-color');
             }
           }
 
