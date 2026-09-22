@@ -157,6 +157,7 @@
     }
     .break-lunch-btn:hover { background: var(--marker-amber-soft); }
     .cell-lunch { font-size: var(--fs-xs); color: var(--marker-amber); background: var(--marker-amber-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .cell-lunch.is-default { opacity: 0.75; font-style: italic; }
     .cell-supervision { font-size: var(--fs-xs); color: var(--signal-green); background: var(--signal-green-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .popup-lunch-row {
       display: flex; align-items: center; gap: 8px; padding: 8px 15px;
@@ -201,6 +202,11 @@
     .break-dur-dec:hover, .break-dur-inc:hover { background: #e5e7eb; }
     .break-del-entry { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1em; padding: 0 1px; }
     .break-del-entry:hover { color: #dc2626; }
+    .lunch-config-row { display: flex; align-items: center; gap: 5px; margin-left: 8px; padding-left: 8px; border-left: 1px dashed #e5e7eb; flex-wrap: wrap; }
+    .lunch-config-entry { display: flex; align-items: center; gap: 4px; background: var(--marker-amber-soft, #fef3c7); border-radius: 4px; padding: 2px 6px; font-size: 0.78em; }
+    .lunch-config-entry select, .lunch-config-entry input[type=time] { border: 1px solid #e2b060; border-radius: 3px; font-size: 0.95em; padding: 1px 3px; background: white; }
+    .lunch-config-add-btn { background: none; border: 1px dashed #e2b060; color: #92400e; border-radius: 4px; cursor: pointer; font-size: 0.78em; padding: 2px 7px; }
+    .lunch-config-add-btn:hover { border-style: solid; background: var(--marker-amber-soft, #fef3c7); }
 
     /* ---- POPUP TIME ---- */
     .popup-time-row {
@@ -586,7 +592,7 @@
         <span id="copySlotFeedback"></span>
       </div>
       <div class="popup-lunch-row">
-        <label>🍽️ Ruokailu alkaa</label>
+        <label id="lunchLabel">🍽️ Ruokailu alkaa</label>
         <input type="time" id="lunchStartInput" class="lunch-time-input">
         <select id="lunchDuration" class="lunch-dur-select">
           <option value="15">15 min</option>
@@ -673,6 +679,7 @@
 
     // =================== STATE ===================
     let dayBreaks = [];       // [dayIdx][{afterLesson, duration}]
+    let dayLunch = [null, null, null, null, null]; // [dayIdx]: {slot, start, duration} | null — default lunch per day
     let registry = [];        // [{name:string, members:string[]}]
     let weekData = {};        // {weekKey: {dayAbbr: {slotIdx: {participants:[], text:"", startOverride?, endOverride?}}}}
     let currentWeekOffset = 0;
@@ -816,6 +823,22 @@
       return computeCascadingSlotTime(dayIdx, slotIdx, weekKey);
     }
 
+    // Resolve the lunch info to display/edit for a slot: an explicit per-week
+    // override (cell.lunchStart) wins; an explicit per-week "cleared" flag
+    // suppresses the day's default lunch; otherwise fall back to the day's
+    // configured default lunch (dayLunch) if it is attached to this slot.
+    function getEffectiveLunch(dayIdx, slotIdx, cell) {
+      if (cell && cell.lunchStart != null) {
+        return { start: cell.lunchStart, duration: cell.lunchDuration || 15, isDefault: false };
+      }
+      if (cell && cell.lunchCleared) return null;
+      const dl = dayLunch[dayIdx];
+      if (dl && dl.slot === slotIdx) {
+        return { start: dl.start, duration: dl.duration, isDefault: true };
+      }
+      return null;
+    }
+
     // =================== RENDER GRID HEADER ===================
     function renderGridHeader() {
       const headRow = document.getElementById('gridHeadRow');
@@ -933,18 +956,19 @@
             td.appendChild(brkDiv);
           }
 
-          if (cell && cell.lunchStart != null) {
-            const lDiv = document.createElement('div');
-            lDiv.className = 'cell-lunch';
-            lDiv.textContent = `🍽️ ${minToTime(cell.lunchStart)} (${cell.lunchDuration || 15}min)`;
-            td.appendChild(lDiv);
-          }
-
           if (cell && cell.breakSupervision) {
             const sDiv = document.createElement('div');
             sDiv.className = 'cell-supervision';
-            sDiv.textContent = '🏃 Välkkävalvonta';
+            sDiv.textContent = '� Välkkävalvonta';
             td.appendChild(sDiv);
+          }
+
+          const effLunch = getEffectiveLunch(d, curLi, cell);
+          if (effLunch) {
+            const lDiv = document.createElement('div');
+            lDiv.className = 'cell-lunch' + (effLunch.isDefault ? ' is-default' : '');
+            lDiv.textContent = `�️ ${minToTime(effLunch.start)} (${effLunch.duration}min)`;
+            td.appendChild(lDiv);
           }
 
           td.addEventListener('click', () => openPopup(d, curLi));
@@ -982,8 +1006,11 @@
       else timeRow.classList.remove('has-override');
 
       document.getElementById('popupText').value = cell.text || '';
-      document.getElementById('lunchStartInput').value = cell.lunchStart != null ? minToTime(cell.lunchStart) : '';
-      document.getElementById('lunchDuration').value = String(cell.lunchDuration || 15);
+      const effLunch = getEffectiveLunch(dayIdx, slotIdx, cell);
+      document.getElementById('lunchStartInput').value = effLunch ? minToTime(effLunch.start) : '';
+      document.getElementById('lunchDuration').value = String(effLunch ? effLunch.duration : 15);
+      const lunchLabel = document.getElementById('lunchLabel');
+      lunchLabel.textContent = effLunch && effLunch.isDefault ? '🍽️ Ruokailu alkaa (oletus)' : '🍽️ Ruokailu alkaa';
       const supBtn = document.getElementById('supervisionBtn');
       supBtn.style.background = cell.breakSupervision ? '#dbeafe' : 'white';
       supBtn.style.borderColor = cell.breakSupervision ? '#3b82f6' : '#d1d5db';
@@ -1030,6 +1057,9 @@
         const lp = lunchVal.split(':');
         slotData.lunchStart = parseInt(lp[0]) * 60 + parseInt(lp[1]);
         slotData.lunchDuration = parseInt(document.getElementById('lunchDuration').value);
+      } else {
+        const dl = dayLunch[dayIdx];
+        if (dl && dl.slot === slotIdx) slotData.lunchCleared = true;
       }
       if (document.getElementById('supervisionBtn').dataset.active === '1') slotData.breakSupervision = true;
       weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
@@ -1436,6 +1466,7 @@
         affected: targets.map(tgt => ({
           dayIdx: tgt,
           breaks: JSON.parse(JSON.stringify(dayBreaks[tgt] || [])),
+          lunch: dayLunch[tgt] ? { ...dayLunch[tgt] } : null,
           rhythm: dayRhythms[tgt],
           cells: JSON.parse(JSON.stringify((weekData[key] || {})[DAYS[tgt]] || {}))
         }))
@@ -1443,6 +1474,7 @@
       const srcCells = JSON.parse(JSON.stringify((weekData[key] || {})[DAYS[src]] || {}));
       for (const tgt of targets) {
         dayBreaks[tgt] = JSON.parse(JSON.stringify(dayBreaks[src] || []));
+        dayLunch[tgt] = dayLunch[src] ? { ...dayLunch[src] } : null;
         dayRhythms[tgt] = dayRhythms[src];
         if (!weekData[key]) weekData[key] = {};
         weekData[key][DAYS[tgt]] = JSON.parse(JSON.stringify(srcCells));
@@ -1498,6 +1530,70 @@
             }
           }
         }
+
+        // ---- Default lunch config for this day ----
+        const lunchRow = document.createElement('span');
+        lunchRow.className = 'lunch-config-row';
+        const dl = dayLunch[d];
+        const capD2 = d;
+        if (dl) {
+          const entry = document.createElement('span');
+          entry.className = 'lunch-config-entry';
+          entry.appendChild(document.createTextNode('🍽️ '));
+
+          const slotSel = document.createElement('select');
+          for (let li = 0; li < LESSON_COUNT; li++) {
+            const opt = document.createElement('option');
+            opt.value = String(li);
+            opt.textContent = `T${li + 1}`;
+            if (dl.slot === li) opt.selected = true;
+            slotSel.appendChild(opt);
+          }
+          slotSel.addEventListener('change', () => { dl.slot = parseInt(slotSel.value); renderGrid(); });
+
+          const timeInput = document.createElement('input');
+          timeInput.type = 'time';
+          timeInput.value = minToTime(dl.start);
+          timeInput.addEventListener('change', () => {
+            const [h, m] = timeInput.value.split(':');
+            dl.start = parseInt(h) * 60 + parseInt(m);
+            renderGrid();
+          });
+
+          const durSel = document.createElement('select');
+          [15, 20].forEach(dur => {
+            const opt = document.createElement('option');
+            opt.value = String(dur);
+            opt.textContent = dur + 'min';
+            if (dl.duration === dur) opt.selected = true;
+            durSel.appendChild(opt);
+          });
+          durSel.addEventListener('change', () => { dl.duration = parseInt(durSel.value); renderGrid(); });
+
+          const del = document.createElement('button');
+          del.className = 'break-del-entry';
+          del.textContent = '×';
+          del.title = 'Poista oletusruokailu';
+          del.addEventListener('click', () => { dayLunch[capD2] = null; renderBreaksEditor(); renderGrid(); });
+
+          entry.appendChild(slotSel);
+          entry.appendChild(timeInput);
+          entry.appendChild(durSel);
+          entry.appendChild(del);
+          lunchRow.appendChild(entry);
+        } else {
+          const addLunchBtn = document.createElement('button');
+          addLunchBtn.className = 'lunch-config-add-btn';
+          addLunchBtn.textContent = '+ 🍽️ Ruokailu';
+          addLunchBtn.title = 'Lisää tälle päivälle vakioruokailu joka viikkoon';
+          addLunchBtn.addEventListener('click', () => {
+            dayLunch[capD2] = { slot: 4, start: 660, duration: 20 };
+            renderBreaksEditor(); renderGrid();
+          });
+          lunchRow.appendChild(addLunchBtn);
+        }
+        row.appendChild(lunchRow);
+
         container.appendChild(row);
       }
 
@@ -1542,8 +1638,9 @@
       undoBtn.addEventListener('click', () => {
         if (!undoState) return;
         const key = undoState.weekKey;
-        for (const { dayIdx, breaks, rhythm, cells } of undoState.affected) {
+        for (const { dayIdx, breaks, lunch, rhythm, cells } of undoState.affected) {
           dayBreaks[dayIdx] = breaks;
+          dayLunch[dayIdx] = lunch;
           dayRhythms[dayIdx] = rhythm;
           if (!weekData[key]) weekData[key] = {};
           weekData[key][DAYS[dayIdx]] = cells;
@@ -1702,7 +1799,9 @@
         // as a plain object keyed by day index instead.
         const dayBreaksByIndex = {};
         dayBreaks.forEach((breaks, idx) => { dayBreaksByIndex[idx] = breaks; });
-        await setDoc(configDocRef(uid), { dayBreaksByIndex, registry, rhythms, dayRhythms });
+        const dayLunchByIndex = {};
+        dayLunch.forEach((lunch, idx) => { dayLunchByIndex[idx] = lunch; });
+        await setDoc(configDocRef(uid), { dayBreaksByIndex, dayLunchByIndex, registry, rhythms, dayRhythms });
       } catch (e) {
         console.error('Konfiguraation tallennus epäonnistui:', e);
         alert('Konfiguraation tallennus epäonnistui: ' + e.message);
@@ -1728,6 +1827,9 @@
       if (Array.isArray(data.registry)) registry = data.registry;
       if (Array.isArray(data.rhythms) && data.rhythms.length) rhythms = data.rhythms;
       if (Array.isArray(data.dayRhythms) && data.dayRhythms.length === 5) dayRhythms = data.dayRhythms;
+      if (data.dayLunchByIndex && typeof data.dayLunchByIndex === 'object') {
+        dayLunch = Array.from({ length: 5 }, (_, idx) => data.dayLunchByIndex[idx] ?? data.dayLunchByIndex[String(idx)] ?? null);
+      }
       renderGrid();
       renderRegistry();
       renderRhythms();

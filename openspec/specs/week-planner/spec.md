@@ -36,6 +36,8 @@ The popup footer SHALL provide two explicit controls: a primary "Tallenna" (Save
 
 The popup SHALL provide a "Tyhjennä sisältö" (Clear content) control, distinct from the existing "Tyhjennä solu" (Clear cell) control. Activating "Tyhjennä sisältö" SHALL clear the popup's in-progress text, participants, and subject selections, but SHALL leave the time fields, lunch fields, and supervision flag unchanged. Activating "Tyhjennä sisältö" SHALL NOT itself modify the current week's stored data or close the popup; the cleared state SHALL only be committed when the user subsequently activates "Tallenna", and SHALL be discarded like any other in-popup edit if the user activates "Peruuta", the ✕ control, or the backdrop instead.
 
+When a weekday has a default lunch configured (see per-day-breaks capability) attached to a given lesson slot, and the current week's data for that slot has no explicit lunch override, the popup's lunch fields SHALL be pre-filled with the day's default start time and duration, and SHALL be visually labeled as the default (e.g. "(oletus)"). Saving the popup with the lunch fields changed from the default SHALL store an explicit per-week lunch override for that slot, taking precedence over the day's default in all future views of that week. Saving the popup with the lunch start field cleared, when a default lunch is attached to that slot, SHALL store an explicit per-week marker suppressing the default for that slot in the current week only; the day's default SHALL continue to apply to all other weeks. Activating "Tyhjennä solu" SHALL remove any such per-week lunch override or suppression marker, after which the slot reverts to showing the day's default lunch (if any) again.
+
 #### Scenario: Popup opens with computed time
 - **WHEN** the user clicks a lesson slot cell that has no time override
 - **THEN** the popup shows the time computed from the day's rhythm and break configuration in editable time fields
@@ -99,6 +101,22 @@ The popup SHALL provide a "Tyhjennä sisältö" (Clear content) control, distinc
 #### Scenario: Clear content is discarded by Cancel
 - **WHEN** the user activates "Tyhjennä sisältö" and then activates "Peruuta" instead of "Tallenna"
 - **THEN** the popup closes and the lesson slot's stored data (text, participants, subjects, and all other fields) is unchanged from before the popup was opened
+
+#### Scenario: Popup pre-fills the day's default lunch
+- **WHEN** the user opens the popup for a lesson slot that has a default lunch attached to it and no per-week lunch override
+- **THEN** the popup's lunch start and duration fields show the day's default values, labeled as the default
+
+#### Scenario: Per-week lunch override takes precedence
+- **WHEN** the user changes the lunch fields for a slot that has a default lunch attached and activates "Tallenna"
+- **THEN** the lesson cell shows the newly entered lunch time for the current week, and other weeks continue to show the day's unchanged default lunch for that slot
+
+#### Scenario: Suppress the default lunch for one week
+- **WHEN** the user clears the lunch start field for a slot that has a default lunch attached and activates "Tallenna"
+- **THEN** no lunch indicator appears in that slot for the current week, while other weeks continue to show the day's default lunch for that slot
+
+#### Scenario: Clearing the cell restores the default lunch
+- **WHEN** the user activates "Tyhjennä solu" on a slot that has a per-week lunch override or suppression, then reopens the popup for that slot
+- **THEN** the popup shows the day's default lunch again (if one is attached to that slot), as if no per-week change had ever been made
 
 ### Requirement: Lesson cell subject display
 When a lesson slot has one or more subjects stored, the system SHALL render each subject as a color-coded badge on the same visual row as the time indicator. Subject badges SHALL use a larger font size than the participants line. When a slot has no subjects, no badge SHALL appear.
