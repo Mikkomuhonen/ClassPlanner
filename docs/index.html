@@ -984,26 +984,40 @@
           }
 
           const brk = (dayBreaks[d] || []).find(b => b.afterLesson === curLi);
+          const effLunch = getEffectiveLunch(d, curLi, cell);
+
+          const brkGroup = document.createDocumentFragment();
           if (brk) {
             const brkDiv = document.createElement('div');
             brkDiv.className = 'cell-break';
             brkDiv.textContent = `░ ${brk.duration} min ░`;
-            td.appendChild(brkDiv);
+            brkGroup.appendChild(brkDiv);
           }
 
           if (cell && cell.breakSupervision) {
             const sDiv = document.createElement('div');
             sDiv.className = 'cell-supervision';
             sDiv.textContent = '� Välkkävalvonta';
-            td.appendChild(sDiv);
+            brkGroup.appendChild(sDiv);
           }
 
-          const effLunch = getEffectiveLunch(d, curLi, cell);
+          const lunchGroup = document.createDocumentFragment();
           if (effLunch) {
             const lDiv = document.createElement('div');
             lDiv.className = 'cell-lunch' + (effLunch.isDefault ? ' is-default' : '');
             lDiv.textContent = `�️ ${minToTime(effLunch.start)} (${effLunch.duration}min)`;
-            td.appendChild(lDiv);
+            lunchGroup.appendChild(lDiv);
+          }
+
+          // If the lunch actually starts earlier than the break for this slot,
+          // show the lunch indicator first (chronological order).
+          const lunchStartsFirst = !!(brk && effLunch && effLunch.start < t.end);
+          if (lunchStartsFirst) {
+            td.appendChild(lunchGroup);
+            td.appendChild(brkGroup);
+          } else {
+            td.appendChild(brkGroup);
+            td.appendChild(lunchGroup);
           }
 
           td.addEventListener('click', () => openPopup(d, curLi));
