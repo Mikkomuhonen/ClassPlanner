@@ -619,8 +619,13 @@
           <option value="30">30 min</option>
         </select>
       </div>
+      <div class="popup-lunch-row" style="align-items:flex-start;">
+        <div style="display:flex;flex-direction:column;gap:3px;width:100%;">
+          <label style="font-size:0.78em;color:#6b7280;">🔀 Järjestys solussa</label>
+          <div id="indicatorOrderList" style="display:flex;flex-direction:column;gap:3px;"></div>
+        </div>
+      </div>
       <div class="popup-lunch-row">
-        <button id="swapOrderBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🔀 Ruokailu ennen välkkää</button>
         <button id="clearContentBtn" style="margin-left:auto;background:none;border:1px solid #d1d5db;color:#6b7280;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🧹 Tyhjennä sisältö</button>
         <button id="clearCellBtn" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
       </div>
@@ -708,6 +713,9 @@
     let subjects = [];            // [{code, name, color}]
     let subjectsUnsub = null;
     let popupSubjects = [];       // codes selected in current popup
+    let popupIndicatorOrder = ['break', 'supervision', 'lunch']; // display order for the current popup's slot
+    let popupIndicatorOrderChanged = false; // true once the user manually reorders in this popup session
+    const INDICATOR_ORDER_LABELS = { break: '░ Välitunti', supervision: '🏃 Välkkävalvonta', lunch: '🍽️ Ruokailu' };
     let rhythms = [
       { name: 'A', startMinutes: 505 },
       { name: 'B', startMinutes: 510 },
@@ -882,6 +890,29 @@
       return { start, duration };
     }
 
+    // Resolve the display order of the break, supervision, and lunch
+    // indicators for a slot. A stored per-slot override (cell.indicatorOrder)
+    // takes precedence; otherwise the three are ordered chronologically by
+    // their effective start time (break/supervision default to the lesson's
+    // end time when not otherwise specified), preserving break-then-
+    // supervision-then-lunch as the tie-break order. Legacy data using the
+    // older `lunchBeforeBreak` boolean is honored when no explicit order is
+    // stored yet.
+    function getIndicatorOrder(cell, brk, effSupervision, effLunch, lessonEndMin) {
+      if (cell && Array.isArray(cell.indicatorOrder) && cell.indicatorOrder.length) {
+        const known = cell.indicatorOrder.filter(id => id === 'break' || id === 'supervision' || id === 'lunch');
+        const rest = ['break', 'supervision', 'lunch'].filter(id => !known.includes(id));
+        return [...known, ...rest];
+      }
+      if (cell && cell.lunchBeforeBreak) return ['lunch', 'break', 'supervision'];
+      const starts = {
+        break: brk ? lessonEndMin : Infinity,
+        supervision: effSupervision ? effSupervision.start : Infinity,
+        lunch: effLunch ? effLunch.start : Infinity,
+      };
+      return ['break', 'supervision', 'lunch'].slice().sort((a, b) => starts[a] - starts[b]);
+    }
+
     // =================== RENDER GRID HEADER ===================
     function renderGridHeader() {
       const headRow = document.getElementById('gridHeadRow');
@@ -1008,42 +1039,29 @@
           const effLunch = getEffectiveLunch(d, curLi, cell);
           const effSupervision = getEffectiveSupervision(cell, brk, t.end);
 
-          const brkGroup = document.createDocumentFragment();
+          const indicatorEls = {};
           if (brk) {
             const brkDiv = document.createElement('div');
             brkDiv.className = 'cell-break';
             brkDiv.textContent = `░ ${brk.duration} min ░`;
-            brkGroup.appendChild(brkDiv);
+            indicatorEls.break = brkDiv;
           }
-
           if (effSupervision) {
             const sDiv = document.createElement('div');
             sDiv.className = 'cell-supervision';
             sDiv.textContent = `🏃 Välkkävalvonta ${minToTime(effSupervision.start)} (${effSupervision.duration}min)`;
-            brkGroup.appendChild(sDiv);
+            indicatorEls.supervision = sDiv;
           }
-
-          const lunchGroup = document.createDocumentFragment();
           if (effLunch) {
             const lDiv = document.createElement('div');
             lDiv.className = 'cell-lunch' + (effLunch.isDefault ? ' is-default' : '');
             lDiv.textContent = `🍽️ ${minToTime(effLunch.start)} (${effLunch.duration}min)`;
-            lunchGroup.appendChild(lDiv);
+            indicatorEls.lunch = lDiv;
           }
 
-          // Manual override (swapOrderBtn in the edit popup) takes precedence;
-          // otherwise fall back to chronological detection: if the lunch
-          // actually starts earlier than the break for this slot, show the
-          // lunch indicator first.
-          const lunchStartsFirst = cell && cell.lunchBeforeBreak
-            ? true
-            : !!(brk && effLunch && effLunch.start < t.end);
-          if (lunchStartsFirst) {
-            td.appendChild(lunchGroup);
-            td.appendChild(brkGroup);
-          } else {
-            td.appendChild(brkGroup);
-            td.appendChild(lunchGroup);
+          const order = getIndicatorOrder(cell, brk, effSupervision, effLunch, t.end);
+          for (const id of order) {
+            if (indicatorEls[id]) td.appendChild(indicatorEls[id]);
           }
 
           td.addEventListener('click', () => openPopup(d, curLi));
@@ -1100,16 +1118,50 @@
       supDurationSelect.style.display = cell.breakSupervision ? '' : 'none';
       supStartInput.value = effSupervision ? minToTime(effSupervision.start) : '';
       supDurationSelect.value = String(effSupervision ? effSupervision.duration : 15);
-      const swapBtn = document.getElementById('swapOrderBtn');
-      swapBtn.style.background = cell.lunchBeforeBreak ? '#dbeafe' : 'white';
-      swapBtn.style.borderColor = cell.lunchBeforeBreak ? '#3b82f6' : '#d1d5db';
-      swapBtn.style.color = cell.lunchBeforeBreak ? '#1d4ed8' : '';
-      swapBtn.style.fontWeight = cell.lunchBeforeBreak ? '600' : '';
-      swapBtn.dataset.active = cell.lunchBeforeBreak ? '1' : '0';
+      popupIndicatorOrder = getIndicatorOrder(cell, brkForPopup, effSupervision, effLunch, t.end);
+      popupIndicatorOrderChanged = false;
+      renderIndicatorOrder();
       renderPopupParticipants();
       renderPopupSubjects();
       document.getElementById('popupOverlay').classList.add('open');
       document.getElementById('popupText').focus();
+    }
+
+    function renderIndicatorOrder() {
+      const container = document.getElementById('indicatorOrderList');
+      container.innerHTML = '';
+      popupIndicatorOrder.forEach((id, i) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:3px 8px;font-size:0.82em;';
+        const label = document.createElement('span');
+        label.style.flex = '1';
+        label.textContent = INDICATOR_ORDER_LABELS[id];
+        row.appendChild(label);
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.textContent = '↑';
+        upBtn.disabled = i === 0;
+        upBtn.style.cssText = 'padding:1px 7px;cursor:pointer;';
+        upBtn.addEventListener('click', () => moveIndicatorOrder(i, -1));
+        row.appendChild(upBtn);
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.textContent = '↓';
+        downBtn.disabled = i === popupIndicatorOrder.length - 1;
+        downBtn.style.cssText = 'padding:1px 7px;cursor:pointer;';
+        downBtn.addEventListener('click', () => moveIndicatorOrder(i, 1));
+        row.appendChild(downBtn);
+        container.appendChild(row);
+      });
+    }
+
+    function moveIndicatorOrder(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= popupIndicatorOrder.length) return;
+      const arr = popupIndicatorOrder;
+      [arr[index], arr[target]] = [arr[target], arr[index]];
+      popupIndicatorOrderChanged = true;
+      renderIndicatorOrder();
     }
 
     function hidePopupOverlay() {
@@ -1159,7 +1211,7 @@
           slotData.supervisionDuration = parseInt(document.getElementById('supervisionDuration').value);
         }
       }
-      if (document.getElementById('swapOrderBtn').dataset.active === '1') slotData.lunchBeforeBreak = true;
+      if (popupIndicatorOrderChanged) slotData.indicatorOrder = [...popupIndicatorOrder];
       weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
       dirty = true;
       renderGrid();
@@ -2284,15 +2336,6 @@
       }
       if (!active) supStartInput.value = '';
     });
-    document.getElementById('swapOrderBtn').addEventListener('click', () => {
-      const btn = document.getElementById('swapOrderBtn');
-      const active = btn.dataset.active !== '1';
-      btn.dataset.active = active ? '1' : '0';
-      btn.style.background = active ? '#dbeafe' : 'white';
-      btn.style.borderColor = active ? '#3b82f6' : '#d1d5db';
-      btn.style.color = active ? '#1d4ed8' : '';
-      btn.style.fontWeight = active ? '600' : '';
-    });
     document.getElementById('clearContentBtn').addEventListener('click', () => {
       if (!popupState) return;
       popupParticipants = [];
@@ -2314,10 +2357,9 @@
       document.getElementById('supervisionStartInput').value = '';
       document.getElementById('supervisionStartInput').style.display = 'none';
       document.getElementById('supervisionDuration').style.display = 'none';
-      const swapBtn = document.getElementById('swapOrderBtn');
-      swapBtn.dataset.active = '0';
-      swapBtn.style.background = 'white'; swapBtn.style.borderColor = '#d1d5db';
-      swapBtn.style.color = ''; swapBtn.style.fontWeight = '';
+      popupIndicatorOrder = ['break', 'supervision', 'lunch'];
+      popupIndicatorOrderChanged = false;
+      renderIndicatorOrder();
       const timeRow = document.getElementById('popupTimeRow');
       timeRow.classList.remove('has-override');
       const { dayIdx, slotIdx } = popupState;
