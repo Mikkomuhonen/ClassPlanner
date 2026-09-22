@@ -1674,10 +1674,14 @@
       clearAllFeedback.style.cssText = 'font-size:0.78em;color:#16a34a;margin-left:8px;';
       clearAllBtn.addEventListener('click', () => {
         const key = getWeekKey(currentWeekOffset);
-        const hasCells = weekData[key] && Object.keys(weekData[key]).some(day => Object.keys(weekData[key][day] || {}).length > 0);
-        if (!hasCells) return;
+        const dayKeys = DAYS.filter(day => Object.keys((weekData[key] || {})[day] || {}).length > 0);
+        if (dayKeys.length === 0) {
+          clearAllFeedback.textContent = 'Ei tyhjennettävää sisältöä';
+          setTimeout(() => { clearAllFeedback.textContent = ''; }, 2000);
+          return;
+        }
         if (!confirm('Tyhjennetäänkö tämän viikon kaikki solut? Toimintoa ei voi perua.')) return;
-        weekData[key] = {};
+        for (const day of dayKeys) delete weekData[key][day];
         dirty = true;
         renderGrid();
         clearAllFeedback.textContent = '\u2713 Tyhjennetty';
