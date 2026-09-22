@@ -143,6 +143,7 @@
     .lesson-cell.has-subject-color:hover { filter: brightness(0.95); }
     .cell-time { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; }
     .cell-participants { font-size: var(--fs-xs); color: #6b7280; margin-bottom: 2px; font-style: italic; }
+    .cell-participant-highlight { padding: 0 3px; border-radius: 3px; font-weight: 700; font-style: normal; }
 
     .cell-text { font-size: var(--fs-sm); line-height: 1.35; color: #374151; white-space: pre-wrap; }
     .cell-break { font-size: 0.7em; color: #9ca3af; text-align: center; padding: 3px 0 2px; border-top: 1px dashed #e5e7eb; margin-top: 4px; }
@@ -268,6 +269,11 @@
       flex: 1; outline: none; color: #1f2937;
     }
     .group-name-input:focus { border-bottom: 1px solid #3b82f6; }
+    .group-color-input, .member-color-input {
+      width: 22px; height: 22px; padding: 0; border: 1px solid #d1d5db; border-radius: 3px;
+      cursor: pointer; background: none; flex-shrink: 0;
+    }
+    .member-color-input { width: 18px; height: 18px; }
     .reg-group-members { padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .member-item {
       display: flex; align-items: center; gap: 3px;
@@ -367,6 +373,7 @@
     .popup-group { margin-bottom: 10px; }
     .popup-group:last-child { margin-bottom: 0; }
     .popup-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-weight: 600; font-size: 0.82em; color: #374151; }
+    .popup-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
     .popup-quick-btn {
       background: none; border: 1px solid #3b82f6; color: #3b82f6;
       border-radius: 3px; cursor: pointer; font-size: 0.72em; padding: 1px 6px;
@@ -787,6 +794,17 @@
     function normalizeCode(s) {
       return s.trim().toUpperCase();
     }
+    // Resolves the display color for a participant: an individual highlight
+    // color set on that member takes precedence over the member's group color;
+    // returns null if the participant has no group/color (default styling).
+    function getParticipantColor(name) {
+      for (const g of registry) {
+        if (g.members.includes(name)) {
+          return (g.memberColors && g.memberColors[name]) || g.color || null;
+        }
+      }
+      return null;
+    }
 
     // =================== TIME UTILS ===================
     function minToTime(m) {
@@ -1034,7 +1052,18 @@
             if (cell.participants?.length) {
               const pDiv = document.createElement('div');
               pDiv.className = 'cell-participants';
-              pDiv.textContent = cell.participants.join(', ');
+              cell.participants.forEach((name, pIdx) => {
+                const color = getParticipantColor(name);
+                const span = document.createElement('span');
+                span.textContent = name;
+                if (color) {
+                  span.className = 'cell-participant-highlight';
+                  span.style.background = hexToRgba(color, 0.22);
+                  span.style.color = color;
+                }
+                pDiv.appendChild(span);
+                if (pIdx < cell.participants.length - 1) pDiv.appendChild(document.createTextNode(', '));
+              });
               td.appendChild(pDiv);
             }
             if (cell.text) {
@@ -1279,6 +1308,8 @@
         for (const m of [...popupParticipants]) {
           const chip = document.createElement('button');
           chip.className = 'popup-selected-chip';
+          const color = getParticipantColor(m);
+          if (color) { chip.style.background = color; }
           chip.textContent = m + ' ✕';
           const capM = m;
           chip.addEventListener('click', () => {
@@ -1358,6 +1389,13 @@
         const ghdr = document.createElement('div');
         ghdr.className = 'popup-group-header';
 
+        if (group.color) {
+          const dot = document.createElement('span');
+          dot.className = 'popup-group-color-dot';
+          dot.style.background = group.color;
+          ghdr.appendChild(dot);
+        }
+
         const gname = document.createElement('span');
         gname.textContent = group.name || '(ryhmä)';
         ghdr.appendChild(gname);
@@ -1379,7 +1417,13 @@
         for (const m of group.members) {
           if (!m.trim()) continue;
           const btn = document.createElement('button');
-          btn.className = 'popup-member-btn' + (popupParticipants.includes(m) ? ' selected' : '');
+          const selected = popupParticipants.includes(m);
+          btn.className = 'popup-member-btn' + (selected ? ' selected' : '');
+          const memColor = getParticipantColor(m);
+          if (memColor) {
+            if (selected) { btn.style.background = memColor; btn.style.borderColor = memColor; }
+            else { btn.style.borderColor = memColor; btn.style.color = memColor; }
+          }
           btn.textContent = m;
           const capM = m;
           btn.addEventListener('click', () => {
@@ -1412,6 +1456,24 @@
         nameIn.placeholder = 'Ryhmän nimi';
         nameIn.addEventListener('input', () => { group.name = nameIn.value; });
         ghdr.appendChild(nameIn);
+
+        const colorIn = document.createElement('input');
+        colorIn.type = 'color';
+        colorIn.className = 'group-color-input';
+        colorIn.title = 'Ryhmän väri';
+        colorIn.value = group.color || '#94a3b8';
+        colorIn.addEventListener('input', () => { group.color = colorIn.value; });
+        ghdr.appendChild(colorIn);
+
+        const resetColorBtn = document.createElement('button');
+        resetColorBtn.className = 'reorder-btn';
+        resetColorBtn.title = 'Nollaa ryhmän väri';
+        resetColorBtn.textContent = '⟲';
+        resetColorBtn.addEventListener('click', () => {
+          delete group.color;
+          colorIn.value = '#94a3b8';
+        });
+        ghdr.appendChild(resetColorBtn);
 
         const delG = document.createElement('button');
         delG.className = 'del-btn';
@@ -1453,13 +1515,46 @@
           inp.className = 'member-name-input';
           inp.value = m;
           inp.placeholder = 'Nimi';
-          inp.addEventListener('input', () => { group.members[mi] = inp.value; });
+          inp.addEventListener('input', () => {
+            const oldName = group.members[mi];
+            const newName = inp.value;
+            if (group.memberColors && oldName in group.memberColors && oldName !== newName) {
+              group.memberColors[newName] = group.memberColors[oldName];
+              delete group.memberColors[oldName];
+            }
+            group.members[mi] = newName;
+          });
           item.appendChild(inp);
+
+          const memColorIn = document.createElement('input');
+          memColorIn.type = 'color';
+          memColorIn.className = 'member-color-input';
+          memColorIn.title = 'Korosta tätä oppilasta (oma väri)';
+          memColorIn.value = (group.memberColors && group.memberColors[group.members[mi]]) || group.color || '#94a3b8';
+          memColorIn.addEventListener('input', () => {
+            if (!group.memberColors) group.memberColors = {};
+            group.memberColors[group.members[mi]] = memColorIn.value;
+          });
+          item.appendChild(memColorIn);
+
+          const resetMemColorBtn = document.createElement('button');
+          resetMemColorBtn.className = 'reorder-btn';
+          resetMemColorBtn.title = 'Poista tämän oppilaan korostus';
+          resetMemColorBtn.textContent = '⟲';
+          resetMemColorBtn.addEventListener('click', () => {
+            if (group.memberColors) delete group.memberColors[group.members[mi]];
+            memColorIn.value = group.color || '#94a3b8';
+          });
+          item.appendChild(resetMemColorBtn);
 
           const delM = document.createElement('button');
           delM.className = 'del-btn';
           delM.textContent = '×';
-          delM.addEventListener('click', () => { group.members.splice(mi, 1); renderRegistry(); });
+          delM.addEventListener('click', () => {
+            if (group.memberColors) delete group.memberColors[group.members[mi]];
+            group.members.splice(mi, 1);
+            renderRegistry();
+          });
           item.appendChild(delM);
           mems.appendChild(item);
         });
