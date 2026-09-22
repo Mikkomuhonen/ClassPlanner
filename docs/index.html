@@ -752,6 +752,11 @@
       const { onSnapshot } = window.cpFirebase;
       if (subjectsUnsub) { subjectsUnsub(); subjectsUnsub = null; }
       subjectsUnsub = onSnapshot(subjectsDocRef(uid), (snap) => {
+        // Skip re-rendering for the local optimistic echo of our own write:
+        // our in-memory `subjects` already reflects it, and re-rendering here
+        // would destroy focus in any input the user is actively typing in
+        // (e.g. the subject name field), forcing a re-click after every keystroke.
+        if (snap.metadata.hasPendingWrites) return;
         if (snap.exists() && Array.isArray(snap.data().registry)) {
           subjects = snap.data().registry;
           renderRegistry(); renderSubjectsSection(); renderGrid();
