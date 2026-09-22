@@ -641,6 +641,17 @@
 
     onAuthStateChanged(auth, (user) => {
       window.cpFirebase.currentUser = user;
+      if (user) {
+        // Write a small profile doc so the account behind a uid is visible
+        // directly in the Firestore console (email/name), not just in
+        // Firebase Authentication > Users.
+        setDoc(doc(db, 'users', user.uid, 'profile', 'main'), {
+          email: user.email || null,
+          displayName: user.displayName || null,
+          photoURL: user.photoURL || null,
+          lastSignInAt: new Date().toISOString()
+        }, { merge: true }).catch((err) => console.warn('Profile doc write failed:', err));
+      }
       if (typeof window.cpOnAuthStateChanged === 'function') {
         window.cpOnAuthStateChanged(user);
       }
