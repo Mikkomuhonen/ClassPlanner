@@ -1661,6 +1661,31 @@
       copyRow.appendChild(feedbackSpan);
       copyRow.appendChild(undoBtn);
       container.appendChild(copyRow);
+
+      // Clear all cells for the current week
+      const clearAllRow = document.createElement('div');
+      clearAllRow.className = 'clear-all-row';
+      clearAllRow.style.cssText = 'margin-top:10px;';
+      const clearAllBtn = document.createElement('button');
+      clearAllBtn.id = 'clearAllCellsBtn';
+      clearAllBtn.textContent = '🗑 Tyhjennä kaikki solut';
+      clearAllBtn.style.cssText = 'background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;';
+      const clearAllFeedback = document.createElement('span');
+      clearAllFeedback.style.cssText = 'font-size:0.78em;color:#16a34a;margin-left:8px;';
+      clearAllBtn.addEventListener('click', () => {
+        const key = getWeekKey(currentWeekOffset);
+        const hasCells = weekData[key] && Object.keys(weekData[key]).some(day => Object.keys(weekData[key][day] || {}).length > 0);
+        if (!hasCells) return;
+        if (!confirm('Tyhjennetäänkö tämän viikon kaikki solut? Toimintoa ei voi perua.')) return;
+        weekData[key] = {};
+        dirty = true;
+        renderGrid();
+        clearAllFeedback.textContent = '\u2713 Tyhjennetty';
+        setTimeout(() => { clearAllFeedback.textContent = ''; }, 2000);
+      });
+      clearAllRow.appendChild(clearAllBtn);
+      clearAllRow.appendChild(clearAllFeedback);
+      container.appendChild(clearAllRow);
     }
 
     // =================== EDIT MODE ===================
