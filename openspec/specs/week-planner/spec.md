@@ -25,6 +25,20 @@ The system SHALL render a grid with five columns (Monday–Friday) and exactly s
 - **WHEN** the grid is displayed in edit mode
 - **THEN** each day column header shows the day name and a dropdown control pre-selected to the day's current rhythm
 
+In edit mode, the system SHALL provide a "Tyhjennä kaikki solut" (Clear all cells) control that clears every lesson slot's stored data — text, participants, subjects, time override, lunch override or suppression, and supervision flag — for the currently displayed week only. The control SHALL NOT modify the week's notes or todos. Activating the control SHALL require the user to confirm before any data is cleared. If the currently displayed week has no lesson slot data to clear, activating the control SHALL show feedback that there is nothing to clear instead of silently doing nothing.
+
+#### Scenario: Clear all cells for the current week
+- **WHEN** the teacher activates "Tyhjennä kaikki solut" in edit mode while the currently displayed week has at least one lesson slot with stored data, and confirms the action
+- **THEN** every lesson slot for the currently displayed week is cleared of text, participants, subjects, time override, lunch override/suppression, and supervision flag, the grid updates to show no content in any cell, and the week's notes and todos remain unchanged
+
+#### Scenario: Clear all cells with nothing to clear
+- **WHEN** the teacher activates "Tyhjennä kaikki solut" while the currently displayed week has no lesson slot data
+- **THEN** the system shows feedback that there is nothing to clear and does not prompt for confirmation
+
+#### Scenario: Clear all cells does not affect other weeks
+- **WHEN** the teacher clears all cells for the currently displayed week
+- **THEN** lesson slot data for any other week remains unchanged
+
 ### Requirement: Lesson slot popup editor
 The system SHALL open a modal popup when the user clicks any lesson slot cell. The popup SHALL display editable start and end time fields pre-filled from the day's computed schedule. The popup SHALL provide optional lunch time fields: a start time input and a duration selector (15 or 20 minutes). The popup SHALL allow the user to select participants and enter free-form text. A control SHALL allow the user to clear a time override and revert to the computed time.
 
