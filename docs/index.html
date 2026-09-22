@@ -283,6 +283,12 @@
     }
     .add-member-btn:hover, #addGroupBtn:hover { border-color: #3b82f6; color: #3b82f6; }
     #addGroupBtn { display: inline-block; margin-top: 8px; }
+    .clear-all-groups-btn {
+      display: inline-block; margin-top: 8px; margin-left: 8px;
+      background: none; border: 1px solid #dc2626; color: #dc2626;
+      border-radius: 4px; cursor: pointer; padding: 5px 10px; font-size: 0.85em;
+    }
+    .clear-all-groups-btn:hover { background: #fef2f2; }
 
     /* ---- RHYTHMS SECTION ---- */
     #rhythmsSection {
@@ -523,6 +529,7 @@
       <h2>Osallistujarekisteri</h2>
       <div id="registryGroups"></div>
       <button id="addGroupBtn">+ Uusi ryhmä</button>
+      <button id="clearAllGroupsBtn" class="clear-all-groups-btn">Tyhjennä kaikki ryhmät</button>
     </section>
 
     <section id="subjectsSection">
@@ -2298,6 +2305,12 @@
     document.getElementById('popupSaveBtn').addEventListener('click', savePopup);
     document.getElementById('addGroupBtn').addEventListener('click', () => {
       registry.push({ name: '', members: [] });
+      renderRegistry();
+    });
+    document.getElementById('clearAllGroupsBtn').addEventListener('click', () => {
+      if (!registry.length) return;
+      if (!confirm('Poistetaanko kaikki osallistujarekisterin ryhmät? Tätä ei voi perua.')) return;
+      registry.length = 0;
       renderRegistry();
     });
     document.getElementById('addRhythmBtn').addEventListener('click', () => {
