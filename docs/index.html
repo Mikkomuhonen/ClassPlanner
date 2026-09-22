@@ -160,6 +160,11 @@
     .cell-lunch { font-size: var(--fs-xs); color: var(--marker-amber); background: var(--marker-amber-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
     .cell-lunch.is-default { opacity: 0.75; font-style: italic; }
     .cell-supervision { font-size: var(--fs-xs); color: var(--signal-green); background: var(--signal-green-soft); border-radius: 3px; padding: 2px 5px; margin-top: 4px; display: inline-block; }
+    .cell-indicator-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+    .cell-indicator-row .cell-break,
+    .cell-indicator-row .cell-lunch,
+    .cell-indicator-row .cell-supervision { margin-top: 0; }
+    .cell-indicator-row .cell-break { border-top: none; padding: 2px 5px; background: #f3f4f6; border-radius: 3px; }
     .popup-lunch-row {
       display: flex; align-items: center; gap: 8px; padding: 8px 15px;
       border-top: 1px solid #e5e7eb; flex-shrink: 0; background: var(--marker-amber-soft); flex-wrap: wrap;
@@ -1060,8 +1065,28 @@
           }
 
           const order = getIndicatorOrder(cell, brk, effSupervision, effLunch, t.end);
-          for (const id of order) {
-            if (indicatorEls[id]) td.appendChild(indicatorEls[id]);
+          const presentOrder = order.filter(id => indicatorEls[id]);
+          let i = 0;
+          while (i < presentOrder.length) {
+            const el = indicatorEls[presentOrder[i]];
+            // Group consecutive indicators onto one row so e.g. the break and
+            // supervision badges (or any two/three adjacent indicators) sit
+            // side by side instead of stacking on separate lines.
+            if (i + 1 < presentOrder.length) {
+              const rowDiv = document.createElement('div');
+              rowDiv.className = 'cell-indicator-row';
+              rowDiv.appendChild(el);
+              let j = i + 1;
+              while (j < presentOrder.length) {
+                rowDiv.appendChild(indicatorEls[presentOrder[j]]);
+                j++;
+              }
+              td.appendChild(rowDiv);
+              i = presentOrder.length;
+            } else {
+              td.appendChild(el);
+              i++;
+            }
           }
 
           td.addEventListener('click', () => openPopup(d, curLi));
