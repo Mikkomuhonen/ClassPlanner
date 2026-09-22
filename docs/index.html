@@ -462,7 +462,11 @@
       #grid { box-shadow: none; border-radius: 0; width: 100%; }
       #grid th, #grid td { border: 1px solid #888; font-size: 11px; }
       .lesson-cell { cursor: default; }
-      .lesson-cell.has-content { background: #fffde7 !important; -webkit-print-color-adjust: exact; }
+      .lesson-cell.has-content { background: #fffde7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body.print-colors .lesson-cell.has-subject-color {
+        background: var(--cell-tint, #fffde7) !important;
+        box-shadow: inset 3px 0 0 var(--cell-accent, transparent) !important;
+      }
       @page { size: A4 landscape; margin: 1.2cm; }
     }
   </style>
@@ -484,6 +488,10 @@
       <button id="saveBtn">💾 Tallenna</button>
       <button id="loadBtn">📂 Avaa viikko</button>
       <button id="templateBtn" title="Tallenna nykyinen viikko pohjana uusille viikoille">📋 Pohja</button>
+      <label id="printColorLabel" title="Kun päällä, tulosteessa solun koko tausta värittyy oppiaineen värillä. Kun pois, tulosteessa vain oppiaineen tunnus (badge) on värillinen." style="display:flex; align-items:center; gap:4px; font-size:0.82em; cursor:pointer; white-space:nowrap;">
+        <input type="checkbox" id="printColorToggle">
+        🎨 Väritä tulosteessa
+      </label>
       <button id="printBtn">🖨️ Tulosta</button>
       <button id="editToggle">✏️ Muokkaa rakennetta</button>
     </div>
@@ -969,6 +977,8 @@
             if (bg) {
               td.style.background = bg;
               td.style.boxShadow = `inset 3px 0 0 ${primaryColor}`;
+              td.style.setProperty('--cell-tint', bg);
+              td.style.setProperty('--cell-accent', primaryColor);
               td.classList.add('has-subject-color');
             }
           }
@@ -2103,6 +2113,16 @@
     window.addEventListener('focus', afterPrint);
 
     document.getElementById('printBtn').addEventListener('click', printPage);
+
+    // Print color preference (full cell tint vs. subject-badge-only in print)
+    const printColorToggle = document.getElementById('printColorToggle');
+    printColorToggle.checked = localStorage.getItem('cp_printColors') === '1';
+    document.body.classList.toggle('print-colors', printColorToggle.checked);
+    printColorToggle.addEventListener('change', () => {
+      document.body.classList.toggle('print-colors', printColorToggle.checked);
+      localStorage.setItem('cp_printColors', printColorToggle.checked ? '1' : '0');
+    });
+
     document.getElementById('prevWeek').addEventListener('click', () => navigate(-1));
     document.getElementById('nextWeek').addEventListener('click', () => navigate(1));
     document.getElementById('popupClose').addEventListener('click', cancelPopup);
