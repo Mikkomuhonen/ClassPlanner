@@ -44,13 +44,17 @@ The system SHALL open a modal popup when the user clicks any lesson slot cell. T
 
 The popup SHALL also include a subject selection section positioned between the time row and the participants section. The subject selection section SHALL display all registry subjects as selectable buttons. The user MAY select zero, one, or more subjects. A free-text input SHALL allow the user to type a code to create a new subject on the fly (see subject-registry spec).
 
+The popup SHALL provide a break-supervision toggle. When activated, the popup SHALL reveal an optional start time input and a duration selector for the supervision, pre-filled with the lesson's end time and the slot's break duration (if a break is configured after that slot) as defaults. The teacher MAY change these fields to record a supervision time that differs from the break's own time. When the supervision toggle is deactivated, the supervision start/duration fields SHALL be hidden and cleared.
+
+The popup SHALL provide a manual indicator-order toggle ("🔀 Ruokailu ennen välkkää") that, when activated, forces the lunch indicator to display before the break/supervision indicator in the lesson cell for that slot, overriding the automatic chronological ordering described in the "Break, lunch, and supervision indicator order" requirement.
+
 The popup's content area (all fields between the header and the footer) SHALL scroll independently when its content is taller than the available viewport height. The popup header and footer SHALL remain visible at all times, regardless of how much content the scrollable area contains.
 
-The popup footer SHALL provide two explicit controls: a primary "Tallenna" (Save) action and a "Peruuta" (Cancel) action. Activating "Tallenna" SHALL commit all current popup field values — text, participants, subjects, time override (if the time fields differ from the computed time), lunch start/duration (if set), and supervision flag — to the current week's data for that lesson slot, close the popup, and show a brief visible confirmation that the save succeeded. Activating "Peruuta" SHALL discard any in-popup edits made since the popup was opened and close the popup without modifying the current week's data for that slot. The popup's close control (✕) and clicking outside the popup (on the backdrop) SHALL behave identically to activating "Peruuta": both discard in-popup edits and close the popup without saving.
+The popup footer SHALL provide two explicit controls: a primary "Tallenna" (Save) action and a "Peruuta" (Cancel) action. Activating "Tallenna" SHALL commit all current popup field values — text, participants, subjects, time override (if the time fields differ from the computed time), lunch start/duration (if set), supervision flag, supervision start/duration (if set), and the manual indicator-order flag (if set) — to the current week's data for that lesson slot, close the popup, and show a brief visible confirmation that the save succeeded. Activating "Peruuta" SHALL discard any in-popup edits made since the popup was opened and close the popup without modifying the current week's data for that slot. The popup's close control (✕) and clicking outside the popup (on the backdrop) SHALL behave identically to activating "Peruuta": both discard in-popup edits and close the popup without saving.
 
-The popup SHALL provide a "Tyhjennä sisältö" (Clear content) control, distinct from the existing "Tyhjennä solu" (Clear cell) control. Activating "Tyhjennä sisältö" SHALL clear the popup's in-progress text, participants, and subject selections, but SHALL leave the time fields, lunch fields, and supervision flag unchanged. Activating "Tyhjennä sisältö" SHALL NOT itself modify the current week's stored data or close the popup; the cleared state SHALL only be committed when the user subsequently activates "Tallenna", and SHALL be discarded like any other in-popup edit if the user activates "Peruuta", the ✕ control, or the backdrop instead.
+The popup SHALL provide a "Tyhjennä sisältö" (Clear content) control, distinct from the existing "Tyhjennä solu" (Clear cell) control. Activating "Tyhjennä sisältö" SHALL clear the popup's in-progress text, participants, and subject selections, but SHALL leave the time fields, lunch fields, supervision flag/time fields, and the manual indicator-order flag unchanged. Activating "Tyhjennä sisältö" SHALL NOT itself modify the current week's stored data or close the popup; the cleared state SHALL only be committed when the user subsequently activates "Tallenna", and SHALL be discarded like any other in-popup edit if the user activates "Peruuta", the ✕ control, or the backdrop instead.
 
-When a weekday has a default lunch configured (see per-day-breaks capability) attached to a given lesson slot, and the current week's data for that slot has no explicit lunch override, the popup's lunch fields SHALL be pre-filled with the day's default start time and duration, and SHALL be visually labeled as the default (e.g. "(oletus)"). Saving the popup with the lunch fields changed from the default SHALL store an explicit per-week lunch override for that slot, taking precedence over the day's default in all future views of that week. Saving the popup with the lunch start field cleared, when a default lunch is attached to that slot, SHALL store an explicit per-week marker suppressing the default for that slot in the current week only; the day's default SHALL continue to apply to all other weeks. Activating "Tyhjennä solu" SHALL remove any such per-week lunch override or suppression marker, after which the slot reverts to showing the day's default lunch (if any) again.
+When a weekday has a default lunch configured (see per-day-breaks capability) attached to a given lesson slot, and the current week's data for that slot has no explicit lunch override, the popup's lunch fields SHALL be pre-filled with the day's default start time and duration, and SHALL be visually labeled as the default (e.g. "(oletus)"). Saving the popup with the lunch fields changed from the default SHALL store an explicit per-week lunch override for that slot, taking precedence over the day's default in all future views of that week. Saving the popup with the lunch start field cleared, when a default lunch is attached to that slot, SHALL store an explicit per-week marker suppressing the default for that slot in the current week only; the day's default SHALL continue to apply to all other weeks. Activating "Tyhjennä solu" SHALL remove any such per-week lunch override or suppression marker, as well as any supervision time fields and the manual indicator-order flag, after which the slot reverts to showing the day's default lunch (if any) again with no supervision and default indicator ordering.
 
 #### Scenario: Popup opens with computed time
 - **WHEN** the user clicks a lesson slot cell that has no time override
@@ -89,7 +93,7 @@ When a weekday has a default lunch configured (see per-day-breaks capability) at
 - **THEN** no subject badges appear in the lesson cell
 
 #### Scenario: Cancel discards edits
-- **WHEN** the user changes any popup field (text, participants, subjects, time, lunch, or supervision) and then activates "Peruuta"
+- **WHEN** the user changes any popup field (text, participants, subjects, time, lunch, supervision, or indicator order) and then activates "Peruuta"
 - **THEN** the popup closes and the lesson slot's stored data is unchanged from before the popup was opened
 
 #### Scenario: Closing via the ✕ control discards edits
@@ -131,6 +135,43 @@ When a weekday has a default lunch configured (see per-day-breaks capability) at
 #### Scenario: Clearing the cell restores the default lunch
 - **WHEN** the user activates "Tyhjennä solu" on a slot that has a per-week lunch override or suppression, then reopens the popup for that slot
 - **THEN** the popup shows the day's default lunch again (if one is attached to that slot), as if no per-week change had ever been made
+
+#### Scenario: Activate supervision without a custom time
+- **WHEN** the user activates the break-supervision toggle and activates "Tallenna" without changing the pre-filled supervision start/duration fields
+- **THEN** the lesson cell shows a supervision indicator using the lesson's end time and the slot's break duration
+
+#### Scenario: Activate supervision with a custom time
+- **WHEN** the user activates the break-supervision toggle, changes the supervision start time and/or duration fields, and activates "Tallenna"
+- **THEN** the lesson cell shows a supervision indicator using the custom start time and duration instead of the break's own time
+
+#### Scenario: Deactivate supervision
+- **WHEN** the user deactivates the break-supervision toggle for a slot that previously had supervision set and activates "Tallenna"
+- **THEN** no supervision indicator appears in the lesson cell for that slot, and the supervision time fields are cleared
+
+#### Scenario: Manually force lunch before break
+- **WHEN** the user activates the "🔀 Ruokailu ennen välkkää" toggle for a slot and activates "Tallenna"
+- **THEN** the lesson cell shows the lunch indicator before the break/supervision indicator regardless of their actual chronological order
+
+### Requirement: Break, lunch, and supervision indicator order
+When a lesson cell shows both a break-related indicator (regular break and/or break-supervision) and a lunch indicator, the system SHALL order them within the cell. By default the order SHALL be chronological: if the lunch's effective start time is earlier than the lesson slot's end time (i.e., the lunch begins before the break), the lunch indicator SHALL be displayed before the break/supervision indicator; otherwise the break/supervision indicator SHALL be displayed first. A per-slot manual override, set via the popup's indicator-order toggle, SHALL take precedence over the automatic chronological order whenever it is active for that slot.
+
+The break-supervision indicator, when shown, SHALL display its effective start time and duration in the format "🏃 Välkkävalvonta HH:MM (Xmin)", using the slot's explicit supervision start/duration if set, or the break's own start time (the lesson's end time) and duration otherwise.
+
+#### Scenario: Automatic order shows lunch first when it starts earlier
+- **WHEN** a lesson cell has both a break and an effective lunch, no manual order override is set for that slot, and the lunch's start time is earlier than the lesson's end time
+- **THEN** the lunch indicator appears above the break/supervision indicator in the cell
+
+#### Scenario: Automatic order shows break first by default
+- **WHEN** a lesson cell has both a break and an effective lunch, no manual order override is set for that slot, and the lunch's start time is not earlier than the lesson's end time
+- **THEN** the break/supervision indicator appears above the lunch indicator in the cell
+
+#### Scenario: Manual override forces lunch first
+- **WHEN** a lesson cell has both a break and an effective lunch, and the slot has the manual indicator-order override active
+- **THEN** the lunch indicator appears above the break/supervision indicator in the cell, regardless of chronological order
+
+#### Scenario: Supervision indicator shows its effective time
+- **WHEN** a lesson cell has break supervision active for its slot
+- **THEN** the cell shows a supervision indicator reading "🏃 Välkkävalvonta HH:MM (Xmin)" using the slot's custom supervision time if set, or the break's own time otherwise
 
 ### Requirement: Lesson cell subject display
 When a lesson slot has one or more subjects stored, the system SHALL render each subject as a color-coded badge on the same visual row as the time indicator. Subject badges SHALL use a larger font size than the participants line. When a slot has no subjects, no badge SHALL appear.
