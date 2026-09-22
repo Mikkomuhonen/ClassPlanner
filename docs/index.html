@@ -752,15 +752,16 @@
       const { onSnapshot } = window.cpFirebase;
       if (subjectsUnsub) { subjectsUnsub(); subjectsUnsub = null; }
       subjectsUnsub = onSnapshot(subjectsDocRef(uid), (snap) => {
-        // Skip re-rendering for the local optimistic echo of our own write:
-        // our in-memory `subjects` already reflects it, and re-rendering here
-        // would destroy focus in any input the user is actively typing in
-        // (e.g. the subject name field), forcing a re-click after every keystroke.
-        if (snap.metadata.hasPendingWrites) return;
-        if (snap.exists() && Array.isArray(snap.data().registry)) {
-          subjects = snap.data().registry;
-          renderRegistry(); renderSubjectsSection(); renderGrid();
-        }
+        if (!snap.exists() || !Array.isArray(snap.data().registry)) return;
+        const incoming = snap.data().registry;
+        // Skip re-rendering when the incoming data matches what we already have
+        // in memory: this covers both the local optimistic echo (hasPendingWrites)
+        // and the later server-ack echo of our own write (hasPendingWrites: false),
+        // both of which would otherwise destroy focus in any input the user is
+        // actively typing in (e.g. the subject name field) on every keystroke.
+        if (JSON.stringify(incoming) === JSON.stringify(subjects)) return;
+        subjects = incoming;
+        renderRegistry(); renderSubjectsSection(); renderGrid();
       }, (err) => console.error('Oppiainerekisterin reaaliaikaseuranta epäonnistui:', err));
     }
     async function saveSubjects() {
