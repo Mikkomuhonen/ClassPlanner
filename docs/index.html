@@ -612,6 +612,14 @@
       </div>
       <div class="popup-lunch-row">
         <button id="supervisionBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🏃 Välkkävalvonta</button>
+        <input type="time" id="supervisionStartInput" class="lunch-time-input" style="display:none;">
+        <select id="supervisionDuration" class="lunch-dur-select" style="display:none;">
+          <option value="15">15 min</option>
+          <option value="20">20 min</option>
+          <option value="30">30 min</option>
+        </select>
+      </div>
+      <div class="popup-lunch-row">
         <button id="swapOrderBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🔀 Ruokailu ennen välkkää</button>
         <button id="clearContentBtn" style="margin-left:auto;background:none;border:1px solid #d1d5db;color:#6b7280;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🧹 Tyhjennä sisältö</button>
         <button id="clearCellBtn" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
@@ -862,6 +870,18 @@
       return null;
     }
 
+    // Resolve the break supervision info to display/edit for a slot: if the
+    // teacher has an explicit start/duration set (cell.supervisionStart),
+    // use it; otherwise fall back to the regular break's own time window
+    // (lessonEndMin / the break's duration) so supervision defaults to
+    // "during the break" unless a custom time is needed.
+    function getEffectiveSupervision(cell, brk, lessonEndMin) {
+      if (!(cell && cell.breakSupervision)) return null;
+      const start = cell.supervisionStart != null ? cell.supervisionStart : lessonEndMin;
+      const duration = cell.supervisionDuration != null ? cell.supervisionDuration : (brk ? brk.duration : 15);
+      return { start, duration };
+    }
+
     // =================== RENDER GRID HEADER ===================
     function renderGridHeader() {
       const headRow = document.getElementById('gridHeadRow');
@@ -986,6 +1006,7 @@
 
           const brk = (dayBreaks[d] || []).find(b => b.afterLesson === curLi);
           const effLunch = getEffectiveLunch(d, curLi, cell);
+          const effSupervision = getEffectiveSupervision(cell, brk, t.end);
 
           const brkGroup = document.createDocumentFragment();
           if (brk) {
@@ -995,10 +1016,10 @@
             brkGroup.appendChild(brkDiv);
           }
 
-          if (cell && cell.breakSupervision) {
+          if (effSupervision) {
             const sDiv = document.createElement('div');
             sDiv.className = 'cell-supervision';
-            sDiv.textContent = '� Välkkävalvonta';
+            sDiv.textContent = `🏃 Välkkävalvonta ${minToTime(effSupervision.start)} (${effSupervision.duration}min)`;
             brkGroup.appendChild(sDiv);
           }
 
@@ -1006,7 +1027,7 @@
           if (effLunch) {
             const lDiv = document.createElement('div');
             lDiv.className = 'cell-lunch' + (effLunch.isDefault ? ' is-default' : '');
-            lDiv.textContent = `�️ ${minToTime(effLunch.start)} (${effLunch.duration}min)`;
+            lDiv.textContent = `🍽️ ${minToTime(effLunch.start)} (${effLunch.duration}min)`;
             lunchGroup.appendChild(lDiv);
           }
 
@@ -1065,12 +1086,20 @@
       document.getElementById('lunchDuration').value = String(effLunch ? effLunch.duration : 15);
       const lunchLabel = document.getElementById('lunchLabel');
       lunchLabel.textContent = effLunch && effLunch.isDefault ? '🍽️ Ruokailu alkaa (oletus)' : '🍽️ Ruokailu alkaa';
+      const brkForPopup = (dayBreaks[dayIdx] || []).find(b => b.afterLesson === slotIdx);
+      const effSupervision = getEffectiveSupervision(cell, brkForPopup, t.end);
       const supBtn = document.getElementById('supervisionBtn');
       supBtn.style.background = cell.breakSupervision ? '#dbeafe' : 'white';
       supBtn.style.borderColor = cell.breakSupervision ? '#3b82f6' : '#d1d5db';
       supBtn.style.color = cell.breakSupervision ? '#1d4ed8' : '';
       supBtn.style.fontWeight = cell.breakSupervision ? '600' : '';
       supBtn.dataset.active = cell.breakSupervision ? '1' : '0';
+      const supStartInput = document.getElementById('supervisionStartInput');
+      const supDurationSelect = document.getElementById('supervisionDuration');
+      supStartInput.style.display = cell.breakSupervision ? '' : 'none';
+      supDurationSelect.style.display = cell.breakSupervision ? '' : 'none';
+      supStartInput.value = effSupervision ? minToTime(effSupervision.start) : '';
+      supDurationSelect.value = String(effSupervision ? effSupervision.duration : 15);
       const swapBtn = document.getElementById('swapOrderBtn');
       swapBtn.style.background = cell.lunchBeforeBreak ? '#dbeafe' : 'white';
       swapBtn.style.borderColor = cell.lunchBeforeBreak ? '#3b82f6' : '#d1d5db';
@@ -1121,7 +1150,15 @@
         const dl = dayLunch[dayIdx];
         if (dl && dl.slot === slotIdx) slotData.lunchCleared = true;
       }
-      if (document.getElementById('supervisionBtn').dataset.active === '1') slotData.breakSupervision = true;
+      if (document.getElementById('supervisionBtn').dataset.active === '1') {
+        slotData.breakSupervision = true;
+        const supVal = document.getElementById('supervisionStartInput').value;
+        if (supVal) {
+          const sp = supVal.split(':');
+          slotData.supervisionStart = parseInt(sp[0]) * 60 + parseInt(sp[1]);
+          slotData.supervisionDuration = parseInt(document.getElementById('supervisionDuration').value);
+        }
+      }
       if (document.getElementById('swapOrderBtn').dataset.active === '1') slotData.lunchBeforeBreak = true;
       weekData[key][DAYS[dayIdx]][String(slotIdx)] = slotData;
       dirty = true;
@@ -2233,6 +2270,19 @@
       btn.style.borderColor = active ? '#3b82f6' : '#d1d5db';
       btn.style.color = active ? '#1d4ed8' : '';
       btn.style.fontWeight = active ? '600' : '';
+      const supStartInput = document.getElementById('supervisionStartInput');
+      const supDurationSelect = document.getElementById('supervisionDuration');
+      supStartInput.style.display = active ? '' : 'none';
+      supDurationSelect.style.display = active ? '' : 'none';
+      if (active && popupState && !supStartInput.value) {
+        const { dayIdx, slotIdx } = popupState;
+        const key = getWeekKey(currentWeekOffset);
+        const t = getCellTime(dayIdx, slotIdx, key);
+        const brk = (dayBreaks[dayIdx] || []).find(b => b.afterLesson === slotIdx);
+        supStartInput.value = minToTime(t.end);
+        supDurationSelect.value = String(brk ? brk.duration : 15);
+      }
+      if (!active) supStartInput.value = '';
     });
     document.getElementById('swapOrderBtn').addEventListener('click', () => {
       const btn = document.getElementById('swapOrderBtn');
@@ -2261,6 +2311,9 @@
       supBtn.dataset.active = '0';
       supBtn.style.background = 'white'; supBtn.style.borderColor = '#d1d5db';
       supBtn.style.color = ''; supBtn.style.fontWeight = '';
+      document.getElementById('supervisionStartInput').value = '';
+      document.getElementById('supervisionStartInput').style.display = 'none';
+      document.getElementById('supervisionDuration').style.display = 'none';
       const swapBtn = document.getElementById('swapOrderBtn');
       swapBtn.dataset.active = '0';
       swapBtn.style.background = 'white'; swapBtn.style.borderColor = '#d1d5db';
