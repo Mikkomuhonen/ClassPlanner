@@ -1690,6 +1690,34 @@
       clearAllRow.appendChild(clearAllBtn);
       clearAllRow.appendChild(clearAllFeedback);
       container.appendChild(clearAllRow);
+
+      // Clear all break/lunch structure (all weekdays) — for a full redo
+      const clearStructRow = document.createElement('div');
+      clearStructRow.className = 'clear-all-row';
+      clearStructRow.style.cssText = 'margin-top:6px;';
+      const clearStructBtn = document.createElement('button');
+      clearStructBtn.id = 'clearBreaksLunchBtn';
+      clearStructBtn.textContent = '🗑 Tyhjennä viikon välitauot ja ruokailut';
+      clearStructBtn.title = 'Poistaa kaikkien päivien välitauot ja oletusruokailut, jotta voit suunnitella ne kokonaan uusiksi';
+      clearStructBtn.style.cssText = 'background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;';
+      const clearStructFeedback = document.createElement('span');
+      clearStructFeedback.style.cssText = 'font-size:0.78em;color:#16a34a;margin-left:8px;';
+      clearStructBtn.addEventListener('click', () => {
+        const hasAny = dayBreaks.some(b => (b || []).length > 0) || dayLunch.some(l => l != null);
+        if (!hasAny) {
+          clearStructFeedback.textContent = 'Ei tyhjennettävää';
+          setTimeout(() => { clearStructFeedback.textContent = ''; }, 2000);
+          return;
+        }
+        if (!confirm('Tyhjennetäänkö kaikkien päivien välitauot ja oletusruokailut? Tämä koskee kaikkia viikkoja, ei vain nykyistä. Toimintoa ei voi perua.')) return;
+        for (let d = 0; d < 5; d++) { dayBreaks[d] = []; dayLunch[d] = null; }
+        dirty = true;
+        renderBreaksEditor();
+        renderGrid();
+      });
+      clearStructRow.appendChild(clearStructBtn);
+      clearStructRow.appendChild(clearStructFeedback);
+      container.appendChild(clearStructRow);
     }
 
     // =================== EDIT MODE ===================
