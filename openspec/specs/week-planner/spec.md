@@ -30,7 +30,11 @@ The system SHALL open a modal popup when the user clicks any lesson slot cell. T
 
 The popup SHALL also include a subject selection section positioned between the time row and the participants section. The subject selection section SHALL display all registry subjects as selectable buttons. The user MAY select zero, one, or more subjects. A free-text input SHALL allow the user to type a code to create a new subject on the fly (see subject-registry spec).
 
+The popup's content area (all fields between the header and the footer) SHALL scroll independently when its content is taller than the available viewport height. The popup header and footer SHALL remain visible at all times, regardless of how much content the scrollable area contains.
+
 The popup footer SHALL provide two explicit controls: a primary "Tallenna" (Save) action and a "Peruuta" (Cancel) action. Activating "Tallenna" SHALL commit all current popup field values — text, participants, subjects, time override (if the time fields differ from the computed time), lunch start/duration (if set), and supervision flag — to the current week's data for that lesson slot, close the popup, and show a brief visible confirmation that the save succeeded. Activating "Peruuta" SHALL discard any in-popup edits made since the popup was opened and close the popup without modifying the current week's data for that slot. The popup's close control (✕) and clicking outside the popup (on the backdrop) SHALL behave identically to activating "Peruuta": both discard in-popup edits and close the popup without saving.
+
+The popup SHALL provide a "Tyhjennä sisältö" (Clear content) control, distinct from the existing "Tyhjennä solu" (Clear cell) control. Activating "Tyhjennä sisältö" SHALL clear the popup's in-progress text, participants, and subject selections, but SHALL leave the time fields, lunch fields, and supervision flag unchanged. Activating "Tyhjennä sisältö" SHALL NOT itself modify the current week's stored data or close the popup; the cleared state SHALL only be committed when the user subsequently activates "Tallenna", and SHALL be discarded like any other in-popup edit if the user activates "Peruuta", the ✕ control, or the backdrop instead.
 
 #### Scenario: Popup opens with computed time
 - **WHEN** the user clicks a lesson slot cell that has no time override
@@ -83,6 +87,18 @@ The popup footer SHALL provide two explicit controls: a primary "Tallenna" (Save
 #### Scenario: Save confirmation feedback
 - **WHEN** the user activates "Tallenna" and the save completes
 - **THEN** a brief visible confirmation (e.g. a checkmark or "Tallennettu" message) appears, distinct from the closed popup state
+
+#### Scenario: Popup content scrolls when it exceeds the viewport
+- **WHEN** the popup's content (time fields, subjects, participants, text, copy row, lunch row, supervision row) is taller than the available viewport height
+- **THEN** the content area between the header and footer becomes scrollable, and the header and footer remain visible and reachable at all times
+
+#### Scenario: Clear content without affecting other settings
+- **WHEN** the user has set a time override, lunch time, and supervision flag on a slot, opens the popup, and activates "Tyhjennä sisältö" followed by "Tallenna"
+- **THEN** the text, participants, and subjects are cleared from the slot, but the time override, lunch time, and supervision flag remain saved as before
+
+#### Scenario: Clear content is discarded by Cancel
+- **WHEN** the user activates "Tyhjennä sisältö" and then activates "Peruuta" instead of "Tallenna"
+- **THEN** the popup closes and the lesson slot's stored data (text, participants, subjects, and all other fields) is unchanged from before the popup was opened
 
 ### Requirement: Lesson cell subject display
 When a lesson slot has one or more subjects stored, the system SHALL render each subject as a color-coded badge on the same visual row as the time indicator. Subject badges SHALL use a larger font size than the participants line. When a slot has no subjects, no badge SHALL appear.

@@ -327,6 +327,11 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 11px 15px; background: var(--ink-soft); color: white; flex-shrink: 0;
     }
+    #popupBody {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
     #popupTitle { font-weight: 600; font-size: 0.9em; }
     #popupClose { background: none; border: none; color: white; cursor: pointer; font-size: 1.1em; padding: 2px 5px; border-radius: 3px; }
     #popupClose:hover { background: rgba(255,255,255,0.15); }
@@ -340,7 +345,7 @@
     #popupSaveBtn { background: var(--chalk-blue); border: 1px solid var(--chalk-blue); color: white; font-weight: 600; }
     #popupSaveBtn:hover { filter: brightness(1.08); }
     #popupSaveFeedback { font-size: 0.78em; color: #16a34a; }
-    #popupParticipants { padding: 12px 15px; overflow-y: auto; max-height: 210px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+    #popupParticipants { padding: 12px 15px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
     .popup-group { margin-bottom: 10px; }
     .popup-group:last-child { margin-bottom: 0; }
     .popup-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-weight: 600; font-size: 0.82em; color: #374151; }
@@ -366,7 +371,7 @@
     .popup-add-btn:hover { background: #2563eb; }
     #popupText {
       padding: 12px 15px; border: none; outline: none;
-      resize: vertical; min-height: 110px; font-size: 0.88em;
+      resize: vertical; min-height: 110px; max-height: 320px; font-size: 0.88em;
       font-family: inherit; line-height: 1.5; background: #fafafa; flex-shrink: 0;
     }
 
@@ -552,6 +557,7 @@
         <span id="popupTitle"></span>
         <button id="popupClose">✕</button>
       </div>
+      <div id="popupBody">
       <div class="popup-time-row" id="popupTimeRow">
         <label>Alku</label>
         <input type="time" id="popupStartTime" class="popup-time-input">
@@ -590,7 +596,9 @@
       </div>
       <div class="popup-lunch-row">
         <button id="supervisionBtn" style="background:white;border:1px solid #d1d5db;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:0.85em;">🏃 Välkkävalvonta</button>
-        <button id="clearCellBtn" style="margin-left:auto;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
+        <button id="clearContentBtn" style="margin-left:auto;background:none;border:1px solid #d1d5db;color:#6b7280;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🧹 Tyhjennä sisältö</button>
+        <button id="clearCellBtn" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.82em;">🗑 Tyhjennä solu</button>
+      </div>
       </div>
       <div class="popup-footer-row">
         <span id="popupSaveFeedback"></span>
@@ -1995,6 +2003,14 @@
       btn.style.borderColor = active ? '#3b82f6' : '#d1d5db';
       btn.style.color = active ? '#1d4ed8' : '';
       btn.style.fontWeight = active ? '600' : '';
+    });
+    document.getElementById('clearContentBtn').addEventListener('click', () => {
+      if (!popupState) return;
+      popupParticipants = [];
+      popupSubjects = [];
+      document.getElementById('popupText').value = '';
+      renderPopupParticipants();
+      renderPopupSubjects();
     });
     document.getElementById('clearCellBtn').addEventListener('click', () => {
       if (!popupState) return;
